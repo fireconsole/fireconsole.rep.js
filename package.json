@@ -1,0 +1,12 @@
+{
+  "name": "fireconsole.rep.js",
+  "version": "0.0.0",
+  "dependencies": {
+    "bash.origin": "^0.1.61",
+    "bash.origin.express": "^0.1.2",
+    "bash.origin.test": "^0.1.33"
+  },
+  "scripts": {
+    "test": "BO_ROOT_SCRIPT_PATH=$(pwd)/node_modules/bash.origin/bash.origin bash.origin.test examples"
+  }
+}
