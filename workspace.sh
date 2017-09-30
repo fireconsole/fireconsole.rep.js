@@ -20,7 +20,8 @@ depend {
                 "/dist/fireconsole.js": {
                     "@it.pinf.org.browserify#s1": {
                         "src": "$__DIRNAME__/src/fireconsole.rep.js",
-                        "dist": "$__DIRNAME__/dist/fireconsole.rep.js"
+                        "dist": "$__DIRNAME__/dist/fireconsole.rep.js",
+                        "prime": true
                     }
                 }
             }
