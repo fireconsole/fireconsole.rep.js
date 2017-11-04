@@ -9,7 +9,8 @@
     "insight-for-js": "^0.1.2",
     "insight.renderers.default": "0.0.1",
     "lodash": "^4.17.4",
-    "wildfire-for-js": "^0.1.2"
+    "wildfire-for-js": "^0.1.2",
+    "eventemitter2": "^4.1.2"
   },
   "scripts": {
     "test": "BO_ROOT_SCRIPT_PATH=$(pwd)/node_modules/bash.origin/bash.origin bash.origin.test examples"

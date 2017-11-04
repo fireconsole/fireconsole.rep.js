@@ -43,7 +43,7 @@ describe("Suite", function() {
                     }
                 }
             },
-            "/dist/resources/insight.renderers.default": __dirname + "/../../node_modules/insight.renderers.default/resources"
+            "/dist/resources/insight.renderers.default/*": __dirname + "/../../node_modules/insight.renderers.default/resources"
         }
     });
 
