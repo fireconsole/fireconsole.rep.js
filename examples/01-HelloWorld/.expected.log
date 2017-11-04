@@ -4,7 +4,7 @@ environments: default
 
 
   Suite
-[bash.origin.express] Adding route: /dist/resources/insight.renderers.default
+[bash.origin.express] Adding route: /dist/resources/insight.renderers.default/*
 [bash.origin.express] Adding route: /messages.js
 [bash.origin.express] Adding route: /dist/insight.rep.js
 [bash.origin.express] Adding route: /lib/jsonrep.js
@@ -19,6 +19,9 @@ Server: http://localhost:8080/
 127.0.0.1 - "GET /lib/jsonrep.js HTTP/1.1" 200 - "http://localhost:8080/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.79 Safari/537.36"
 127.0.0.1 - "GET /fireconsole.rep.js HTTP/1.1" 200 - "http://localhost:8080/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.79 Safari/537.36"
 127.0.0.1 - "GET /messages.js HTTP/1.1" 200 - "http://localhost:8080/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.79 Safari/537.36"
+127.0.0.1 - "GET /dist/resources/insight.renderers.default/images/plus-small-white.png HTTP/1.1" 200 - "http://localhost:8080/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.79 Safari/537.36"
+127.0.0.1 - "GET /dist/resources/insight.renderers.default/images/node-magnifier.png HTTP/1.1" 200 - "http://localhost:8080/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.79 Safari/537.36"
+127.0.0.1 - "GET /dist/resources/insight.renderers.default/images/document-binary.png HTTP/1.1" 200 - "http://localhost:8080/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.79 Safari/537.36"
 
 
 
