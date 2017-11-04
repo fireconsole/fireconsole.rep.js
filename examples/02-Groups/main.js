@@ -8,6 +8,8 @@ module.config = {
 }
 */
 
+console.log(">>>TEST_IGNORE_LINE:GET /dist/resources/insight.renderers.default/images/<<<");
+
 describe("Suite", function() {
 
     require('bash.origin.express').runForTestHooks(before, after, {
