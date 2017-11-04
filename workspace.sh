@@ -24,6 +24,9 @@ depend {
                         "prime": true
                     }
                 }
+            },
+            "files": {
+                "dist/resources/insight.renderers.default": "$__DIRNAME__/node_modules/insight.renderers.default/resources"
             }
         }
     }
