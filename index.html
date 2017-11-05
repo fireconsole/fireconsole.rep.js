@@ -40,23 +40,29 @@
 <p>A <a href="https://github.com/fireconsole/">FireConsole</a> component in the form of a <a href="https://jsonrep.github.io/jsonrep/">jsonrep.github.io/jsonrep</a>.</p>
 <h1 id="undefinedintegration">Integration</h1>
 <h2 id="undefinedhtml-page">HTML Page</h2>
-<pre><code class="undefinedhtml"><span class="hljs-tag">&lt;<span class="hljs-name">script</span> <span class="hljs-attr">src</span>=<span class="hljs-string">"https://jsonrep.github.io/jsonrep/dist/jsonrep.js"</span>&gt;</span><span class="undefined"></span><span class="hljs-tag">&lt;/<span class="hljs-name">script</span>&gt;</span>
-</code></pre>
 <pre><code class="undefinedhtml"><span class="hljs-tag">&lt;<span class="hljs-name">div</span> <span class="hljs-attr">renderer</span>=<span class="hljs-string">"jsonrep"</span>&gt;</span>{
-    "@fireconsole.github.io/fireconsole.rep.js/dist/fireconsole.rep.js": {
+    "@./dist/fireconsole": {
         "messages": [
             "Hello World!"
         ]
     }
 }<span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-name">script</span> <span class="hljs-attr">src</span>=<span class="hljs-string">"https://jsonrep.github.io/jsonrep/dist/jsonrep.js"</span>&gt;</span><span class="undefined"></span><span class="hljs-tag">&lt;/<span class="hljs-name">script</span>&gt;</span>
 </code></pre>
+<style>
+    DIV[renderer="jsonrep"] {
+        display: inline-block;
+    }
+</style>
+
 <div class="markdown-block-result"><div class="result-label">Result</div> <div renderer="jsonrep">{
-    "@fireconsole.github.io/fireconsole.rep.js/dist/fireconsole.rep.js": {
+    "@./dist/fireconsole": {
         "messages": [
             "Hello World!"
         ]
     }
-}</div></div>
+}</div>
+<script src="https://jsonrep.github.io/jsonrep/dist/jsonrep.js"></script></div>
 <h1 id="undefinedprovenance">Provenance</h1>
 <p>Original Source Logic under <a href="https://opensource.org/licenses/MPL-2.0">Mozilla Public License 2.0</a> by <a href="http://christophdorn.com">Christoph Dorn</a> since 2017.</p>
 <pre><code>Mozilla Public License 2.0
