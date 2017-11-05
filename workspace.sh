@@ -17,16 +17,17 @@ depend {
                 "PACKAGE_SUMMARY": "$__DIRNAME__/GUIDE.md"
             },
             "routes": {
-                "/dist/fireconsole.js": {
+                "/dist/fireconsole.rep.js": {
                     "@it.pinf.org.browserify#s1": {
                         "src": "$__DIRNAME__/src/fireconsole.rep.js",
                         "dist": "$__DIRNAME__/dist/fireconsole.rep.js",
-                        "prime": true
+                        "prime": true,
+                        "format": "pinf"
                     }
                 }
             },
             "files": {
-                "dist/resources/insight.renderers.default": "$__DIRNAME__/node_modules/insight.renderers.default/resources"
+                "/dist/resources/insight.renderers.default/*": "$__DIRNAME__/node_modules/insight.renderers.default/resources"
             }
         }
     }
