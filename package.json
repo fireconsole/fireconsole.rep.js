@@ -1,6 +1,6 @@
 {
     "name": "fireconsole.rep.js",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "dependencies": {
         "bash.origin": "^0.1.61",
         "bash.origin.express": "^0.1.2",
