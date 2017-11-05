@@ -10,6 +10,8 @@
 ===
 
 
+This **Guide** is best viewed at [fireconsole.github.io/fireconsole.rep.js](https://fireconsole.github.io/fireconsole.rep.js/) using a *Modern Browser*.
+
 A [FireConsole](https://github.com/fireconsole/) component in the form of a [jsonrep.github.io/jsonrep](https://jsonrep.github.io/jsonrep/).
 
 Integration
