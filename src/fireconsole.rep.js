@@ -394,6 +394,10 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
                 }
 
                 receiverChannel.parseReceivedPostMessage(message);       
+            },
+            clear: function () {
+
+                panelEl.innerHTML = "";
             }
         };
     }
