@@ -266,15 +266,32 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
         var og = null;
         var meta = null;
 
-        if (typeof message.getMeta === "function") {
+        if (
+            typeof message === "object" &&
+            typeof message.getMeta === "function"
+        ) {
             var obj = DECODER.generateFromMessage(message, DECODER.EXTENDED);
             meta = obj.getMeta() || {};
             og = obj;
         } else {
-            var obj = DECODER.generateFromMessage({
-                meta: {},
-                data: encoder.encode(message, {}, {})
-            }, DECODER.EXTENDED);
+            var obj = null;                
+            if (
+                typeof message === "object" &&
+                message.sender &&
+                message.receiver &&
+                typeof message.meta === "string" &&
+                typeof message.data === "string"
+            ) {
+                obj = DECODER.generateFromMessage({
+                    meta: JSON.parse(message.meta || "{}") || {},
+                    data: message.data
+                }, DECODER.EXTENDED);
+            } else {
+                obj = DECODER.generateFromMessage({
+                    meta: meta || {},
+                    data: encoder.encode(message, {}, {})
+                }, DECODER.EXTENDED);
+            }
             meta = obj.getMeta() || {};
             og = obj;
         }
@@ -390,32 +407,41 @@ const FC = WINDOW.FC = fireconsole.getAPI();
 
 exports.main = function (JSONREP, node) {
 
-    if (node.messages) {
-        node.messages.map(fireconsole.appendMessage);
-    }
-
-    if (node.load) {
-        node.load.map(function (uri) {
-            var script = WINDOW.document.createElement('script');
-            script.type = 'text/javascript';
-            script.src = uri;
-            WINDOW.document.getElementsByTagName('head')[0].appendChild(script);    
+    return Promise.all(Object.keys(node.plugins || []).map(function (key) {
+        var panelNode = {};
+        panelNode[key] = node[key];
+        return JSONREP.markupNode(panelNode).then(function () {
+            return null;
         });
-    }
+    })).then(function () {
 
-    return JSONREP.makeRep(
-        [
-            '<div class="console-container">',
-                '<div class="console-panel"></div>',
-            '</div>'
-        ].join("\n"),
-        {
-            on: {
-                mount: function (el) {
+        if (node.messages) {
+            node.messages.map(fireconsole.appendMessage);
+        }
 
-                    fireconsole.setPanelElement(el.querySelector("DIV.console-panel"));
+        if (node.load) {
+            node.load.map(function (uri) {
+                var script = WINDOW.document.createElement('script');
+                script.type = 'text/javascript';
+                script.src = uri;
+                WINDOW.document.getElementsByTagName('head')[0].appendChild(script);    
+            });
+        }
+
+        return JSONREP.makeRep(
+            [
+                '<div class="console-container">',
+                    '<div class="console-panel"></div>',
+                '</div>'
+            ].join("\n"),
+            {
+                on: {
+                    mount: function (el) {
+
+                        fireconsole.setPanelElement(el.querySelector("DIV.console-panel"));
+                    }
                 }
             }
-        }
-    );
+        );
+    });
 };

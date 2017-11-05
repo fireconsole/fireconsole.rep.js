@@ -41,7 +41,21 @@ describe("Suite", function() {
                         FC.log({
                             "Hello": "World"
                         });
-                        
+
+                        FC.log({
+                            "sender": "http://meta.firephp.org/Wildfire/Plugin/FirePHP/Library-FirePHPCore/0.3",
+                            "receiver": "http://meta.firephp.org/Wildfire/Structure/FirePHP/FirebugConsole/0.1",
+                            "meta": "{\"msg.preprocessor\":\"FirePHPCoreCompatibility\",\"target\":\"console\",\"lang.id\":\"registry.pinf.org/cadorn.org/github/renderers/packages/php/master\",\"priority\":\"log\",\"file\":\"/dl/source/github.com~firephp~firephp-for-firefox-devtools/tests/03-Messages-FirePHPCore/index.php\",\"line\":11}",
+                            "data": "\"Hello World\""
+                        });
+
+                        FC.log({
+                            "sender": "http://meta.firephp.org/Wildfire/Plugin/FirePHP/Library-FirePHPCore/0.3",
+                            "receiver": "http://meta.firephp.org/Wildfire/Structure/FirePHP/FirebugConsole/0.1",
+                            "meta": "{\"msg.preprocessor\":\"FirePHPCoreCompatibility\",\"target\":\"console\",\"lang.id\":\"registry.pinf.org/cadorn.org/github/renderers/packages/php/master\",\"priority\":\"log\",\"label\":\"TestArray\",\"file\":\"/dl/source/github.com~firephp~firephp-for-firefox-devtools/tests/03-Messages-FirePHPCore/index.php\",\"line\":21}",
+                            "data": "{\"key1\":\"val1\",\"key2\":[[\"v1\",\"v2\"],\"v3\"]}"
+                        });
+
                         var count = 0;
 
                         function prependLength (msg) {
@@ -87,13 +101,15 @@ describe("Suite", function() {
         var selector = 'BODY[renderer="jsonrep"] DIV[class="console-container"]';
         
         client.waitForElementPresent(selector, 3000);
-
-//if (process.env.BO_TEST_FLAG_DEV) client.pause(60 * 60 * 24 * 1000);
+        
+        if (process.env.BO_TEST_FLAG_DEV) client.pause(60 * 60 * 24 * 1000);
         
         client.expect.element(selector).text.to.contain([
             'Hello World!',
             'array(Hello World)',
             'map(Hello=>World)',
+            'Hello World',
+            'TestArraymap(key1=>val1,key2=>array(array(v1,v2),v3))',
             'Hello World',
             'Log message',
             'Info message',
