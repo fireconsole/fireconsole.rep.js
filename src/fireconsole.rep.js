@@ -5,6 +5,7 @@ const EVENT_EMITTER = require("eventemitter2").EventEmitter2;
 const WILDFIRE = require("wildfire-for-js/lib/wildfire");
 const RENDERERS = require("insight.renderers.default/lib/insight/pack");
 const CONSOLE_WRAPPER = require("insight.renderers.default/lib/insight/wrappers/console");
+const VIEWER_WRAPPER = require("insight.renderers.default/lib/insight/wrappers/viewer");
 const ENCODER = require("insight-for-js/lib/encoder/default");
 const DECODER = require("insight-for-js/lib/decoder/default");
 const DOMPLATE_UTIL = require("domplate/lib/util");
@@ -243,6 +244,15 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
     }
 
 
+    self.getPanelEl = function () {
+        return panelEl;
+    }
+
+    self.clear = function (options) {
+        options = options || {};
+        var panelEl = options.panelEl || self.getPanelEl();
+        panelEl.innerHTML = "";        
+    }
 
 
     var buffer = [];
@@ -257,7 +267,16 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
 
 	var renderSupervisor = new Supervisor();
 
-    self.appendMessage = function (message) {
+    self.appendMessage = function (message, options) {
+
+        options = options || {};
+
+        if (options.clear) {
+            self.clear(options);
+        }
+
+        var panelEl = options.panelEl || self.getPanelEl();
+        
         if (!panelEl) {
             buffer.push(message);
             return;
@@ -268,32 +287,40 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
 
         if (
             typeof message === "object" &&
-            typeof message.getMeta === "function"
+            typeof message.og !== "undefined"
         ) {
-            var obj = DECODER.generateFromMessage(message, DECODER.EXTENDED);
-            meta = obj.getMeta() || {};
-            og = obj;
+            meta = message.meta;
+            og = message.og;
         } else {
-            var obj = null;                
             if (
                 typeof message === "object" &&
-                message.sender &&
-                message.receiver &&
-                typeof message.meta === "string" &&
-                typeof message.data === "string"
+                typeof message.getMeta === "function"
             ) {
-                obj = DECODER.generateFromMessage({
-                    meta: JSON.parse(message.meta || "{}") || {},
-                    data: message.data
-                }, DECODER.EXTENDED);
+                var obj = DECODER.generateFromMessage(message, DECODER.EXTENDED);
+                meta = obj.getMeta() || {};
+                og = obj;
             } else {
-                obj = DECODER.generateFromMessage({
-                    meta: meta || {},
-                    data: encoder.encode(message, {}, {})
-                }, DECODER.EXTENDED);
+                var obj = null;                
+                if (
+                    typeof message === "object" &&
+                    message.sender &&
+                    message.receiver &&
+                    typeof message.meta === "string" &&
+                    typeof message.data === "string"
+                ) {
+                    obj = DECODER.generateFromMessage({
+                        meta: JSON.parse(message.meta || "{}") || {},
+                        data: message.data
+                    }, DECODER.EXTENDED);
+                } else {
+                    obj = DECODER.generateFromMessage({
+                        meta: meta || {},
+                        data: encoder.encode(message, {}, {})
+                    }, DECODER.EXTENDED);
+                }
+                meta = obj.getMeta() || {};
+                og = obj;
             }
-            meta = obj.getMeta() || {};
-            og = obj;
         }
 
         var helpers = Object.create(commonHelpers);
@@ -301,20 +328,20 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
         helpers.debug = false;
         helpers.dispatchEvent = function (name, args) {
 
-            var context = {
-                meta: args[1].args,
-                message: args[1].message
-            };
             if (name === "expand") {
                 //self.emit("expandRow", context);
             } else
             if (name === "contract") {
                 //self.emit("contractRow", context);
             } else
-            if (
-                name === "inspectMessage" ||
-                name === "inspectFile"                
-            ) {
+            if (name === "inspectMessage") {
+                self.emit(name, {
+                    message: args[1].message
+                });
+            } else
+            if (name === "inspectFile") {
+                var context = UTIL.copy(args[1].args);
+                context.message = args[1].message;
                 self.emit(name, context);
             } else {
                 console.error("helpers.dispatchEvent()", name, args);
@@ -332,40 +359,44 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
 
 //console.log("template!!!", template);
 
-        var options = {};
+        if (options.view === "detail") {
 
-        var msg = {
-            render: function (el, view) {
+            VIEWER_WRAPPER.renderMessage(message, panelEl, {
+                view: [
+                    "detail"
+                ]
+            }, helpers);
 
-                // Nothing to render for groups. Child nodes have already been inserted.
-                // TODO: Maybe do not insert child nodes until expanding?
-                if (typeof meta["group.start"] !== "undefined" && meta["group.start"]) {
-                    return;
-                }
+        } else {
 
-                options = UTIL.copy(options);
-                if (typeof view != "undefined") {
-                    options.view = view;
-                }
-                if (typeof options.view != "array") {
-                    options.view = [options.view];
+            var msg = {
+                render: function (el, view) {
+
+                    // Nothing to render for groups. Child nodes have already been inserted.
+                    // TODO: Maybe do not insert child nodes until expanding?
+                    if (typeof meta["group.start"] !== "undefined" && meta["group.start"]) {
+                        return;
+                    }
+
+                    var options = {};
+                    if (view) {
+                        options.view = view;
+                    }
+                    if (typeof options.view !== "array") {
+                        options.view = [ options.view ];
+                    }
 
                     template.renderObjectGraphToNode(node, el, options, helpers);
-                } else {
-                    throw new Error("NYI");
-                }
-            },
-            template: template.getTemplate(helpers),
-            meta: meta,
-            og: og,
-            options: options,
-            helpers: helpers
-        };
+                },
+                template: template.getTemplate(helpers),
+                meta: meta,
+                og: og,
+                options: {},
+                helpers: helpers
+            };
 
-
-
-        renderSupervisor.appendMessageToNode(panelEl, msg);
-    
+            renderSupervisor.appendMessageToNode(panelEl, msg);
+        }
 
 /*
         template.renderObjectGraphToNode(node, el, {
@@ -379,6 +410,13 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
 
     self.getAPI = function () {
         return {
+            renderMessageInto: function (panelEl, message) {
+                self.appendMessage(message, {
+                    panelEl: panelEl,
+                    clear: true,
+                    view: "detail"
+                });
+            },
             log: function (message) {
 
                 // TODO: Render message.
@@ -397,8 +435,12 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
             },
             clear: function () {
 
+                self.clear();
+
                 panelEl.innerHTML = "";
-            }
+            },
+            on: self.on.bind(self),
+            off: self.off.bind(self)
         };
     }
 }
