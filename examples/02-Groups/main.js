@@ -56,6 +56,24 @@ describe("Suite", function() {
                             "data": "{\"key1\":\"val1\",\"key2\":[[\"v1\",\"v2\"],\"v3\"]}"
                         });
 
+
+                        function ensureInspectorPanel () {
+                            var el = document.querySelector('BODY > DIV.viewer');
+                            if (!el) {
+                                el = document.createElement('DIV');
+                                el.setAttribute("class", "viewer");
+                                document.body.appendChild(el);
+                            }
+                            return el;
+                        }
+                        FC.on("inspectMessage", function (info) {
+                            FC.renderMessageInto(ensureInspectorPanel(), info.message);
+                        });
+                        FC.on("inspectNode", function (info) {
+                            FC.renderMessageInto(ensureInspectorPanel(), info.message);
+                        });
+
+
                         var count = 0;
 
                         function prependLength (msg) {
@@ -73,13 +91,15 @@ describe("Suite", function() {
                             'X-Wf-1-1-1-7: ' + prependLength('[{"Type":"LOG","Label":"TestArray","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"21"},{"key1":"val1","key2":[["v1","v2"],"v3"]}]') + '|',
 
                             'X-Wf-1-1-1-8: ' + prependLength('[{"Type":"TABLE","File":"/tests/03-Messages-FirePHPCore/index.php","Line":26},["2 SQL queries took 0.06 seconds",[["SQL Statement","Time","Result"],["SELECT * FROM Foo","0.02",["row1","row2"]],["SELECT * FROM Bar","0.04",["row1","row2"]]]]]') + '|',
-
-                            'X-Wf-1-1-1-9: ' + prependLength('[{"Type":"GROUP_START","Label":"Group 1","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"28"},null]') + '|',
-                            'X-Wf-1-1-1-10: ' + prependLength('[{"Type":"LOG","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"29"},"Hello World"]') + '|',
-                            'X-Wf-1-1-1-11: ' + prependLength('[{"Type":"GROUP_START","Label":"Group 1","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"30"},null]') + '|',
-                            'X-Wf-1-1-1-12: ' + prependLength('[{"Type":"LOG","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"31"},"Hello World"]') + '|',
-                            'X-Wf-1-1-1-13: ' + prependLength('[{"Type":"GROUP_END","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"32"},null]') + '|',
-                            'X-Wf-1-1-1-14: ' + prependLength('[{"Type":"GROUP_END","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"33"},null]') + '|',
+                            'X-Wf-1-1-1-9: ' + prependLength('[{"Type":"EXCEPTION","File":"\/app\/_header.php","Line":17},{"Class":"Exception","Message":"Test Exception","File":"\/app\/_header.php","Line":17,"Type":"throw","Trace":[{"file":"\/app\/_header.php","line":20,"function":"test","args":[{"Hello":"World"}]},{"file":"\/app\/index.php","line":3,"args":["\/app\/_header.php"],"function":"require"}]}]') + '|',
+                            'X-Wf-1-1-1-10: ' + prependLength('[{"Type":"TRACE","File":"\/app\/_header.php","Line":25},{"Class":"","Type":"","Function":"fb","Message":"Backtrace to here","File":"\/app\/_header.php","Line":25,"Args":["Backtrace to here","TRACE"],"Trace":[{"file":"\/app\/index.php","line":3,"args":["\/app\/_header.php"],"function":"require"}]}]') + '|',                            
+                            
+                            'X-Wf-1-1-1-11: ' + prependLength('[{"Type":"GROUP_START","Label":"Group 1","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"28"},null]') + '|',
+                            'X-Wf-1-1-1-12: ' + prependLength('[{"Type":"LOG","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"29"},"Hello World"]') + '|',
+                            'X-Wf-1-1-1-13: ' + prependLength('[{"Type":"GROUP_START","Label":"Group 1","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"30"},null]') + '|',
+                            'X-Wf-1-1-1-14: ' + prependLength('[{"Type":"LOG","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"31"},"Hello World"]') + '|',
+                            'X-Wf-1-1-1-15: ' + prependLength('[{"Type":"GROUP_END","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"32"},null]') + '|',
+                            'X-Wf-1-1-1-16: ' + prependLength('[{"Type":"GROUP_END","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"33"},null]') + '|',
 
                             'X-Wf-1-Structure-1: http://meta.firephp.org/Wildfire/Structure/FirePHP/FirebugConsole/0.1',
                             'X-Wf-Protocol-1: http://meta.wildfirehq.org/Protocol/JsonStream/0.2',
@@ -98,12 +118,12 @@ describe("Suite", function() {
 
         client.url('http://localhost:' + process.env.PORT + '/').pause(500);
 
-        var selector = 'BODY[renderer="jsonrep"] DIV[class="console-container"]';
-        
+        var selector = 'BODY[renderer="jsonrep"]';
+
         client.waitForElementPresent(selector, 3000);
-        
+
         if (process.env.BO_TEST_FLAG_DEV) client.pause(60 * 60 * 24 * 1000);
-        
+
         client.expect.element(selector).text.to.contain([
             'Hello World!',
             'array(Hello World)',

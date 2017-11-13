@@ -3,7 +3,6 @@ const WINDOW = window;
 
 const EVENT_EMITTER = require("eventemitter2").EventEmitter2;
 const WILDFIRE = require("wildfire-for-js/lib/wildfire");
-const RENDERERS = require("insight.renderers.default/lib/insight/pack");
 const CONSOLE_WRAPPER = require("insight.renderers.default/lib/insight/wrappers/console");
 const VIEWER_WRAPPER = require("insight.renderers.default/lib/insight/wrappers/viewer");
 const ENCODER = require("insight-for-js/lib/encoder/default");
@@ -39,6 +38,18 @@ const UTIL = {
     }
 };
 
+
+var templatePacks = {
+    "byid": {
+        "php": require("insight.renderers.default/lib/php/pack"),
+        "insight": require("insight.renderers.default/lib/insight/pack")
+    },
+    "list": []
+};
+templatePacks.list.push(templatePacks.byid["php"]);
+templatePacks.list.push(templatePacks.byid["insight"]);
+
+
 var commonHelpers = {
     helpers: null,
     // NOTE: This should only be called once or with an ID to replace existing
@@ -55,12 +66,75 @@ var commonHelpers = {
     getTemplateForId: function(id) {
         throw new Error("NYI - commonHelpers.getTemplateForid (in " + module.id + ")");
     },
+    getTemplateModuleForNode: function (node) {
+
+//console.log("getTemplateModuleForNode", node);
+//;debugger;
+        var found = null;
+
+        var og = node.og || node.getObjectGraph(),
+            ogNode = og.origin,
+            meta = og.meta;
+
+        // Match message-based renderers
+        if (node === ogNode && meta && meta.renderer) {
+            if (!node.meta) node.meta = {};
+            var pack = false;
+            var id = "http://registry.pinf.org/cadorn.org/renderers/packages/insight/0";
+            if (meta.renderer.substring(0, id.length+1) === id + ":") {
+                if (node === node.getObjectGraph().getOrigin()) {
+                    node.meta.renderer = meta.renderer.substring(id.length+1);
+                }
+                pack = "insight";
+            }
+            if (pack) {
+                found = templatePacks.byid[pack].getTemplateForNode(node);
+            } else {
+                console.warn("Unknown renderer: " + meta.renderer);
+            }
+        }
+
+        // Match message-based language primitives
+        if (!found && meta && meta["lang.id"]) {
+            if (meta["lang.id"] == "registry.pinf.org/cadorn.org/github/renderers/packages/php/master") {
+                found = templatePacks.byid["php"].getTemplateForNode(node);
+                if (!found) {
+                    // lookup in default language pack
+                    found = templatePacks.byid["insight"].getTemplateForNode(node);
+                }
+            } else {
+                throw new Error("Unknown language ID: " + meta["lang.id"]);
+            }
+        } else
+        if (!found) {
+//console.log("getTemplateModuleForNode() - !found");
+            for (var i=templatePacks.list.length-1 ; i>=0 ; i--) {
+                if (
+                    typeof templatePacks.list[i].getTemplateForNode == "function" &&
+                    (found = templatePacks.list[i].getTemplateForNode(node))
+                ) {
+                    break;
+                }
+            }
+        }
+        if (!found) {
+            console.error("ERROR: Template for node '" + node.type + "' not found! (in " + module.id + ")", node);
+            return false;
+        }
+        return found;
+    },
     getTemplateForNode: function (node) {
         if (!node) {
             throw new Error("No node specified!");
         }
-        var template = RENDERERS.getTemplateForNode(node).getTemplate(this.helpers);
-        return template;
+//console.log("getTemplateForNode", node);
+
+        var template = commonHelpers.getTemplateModuleForNode(node);
+
+//        "lang.id":"registry.pinf.org/cadorn.org/github/renderers/packages/php/master"
+
+//        var template = INSIGHT_RENDERERS.getTemplateForNode(node).getTemplate(this.helpers);
+        return template.getTemplate(this.helpers);
     },
     getResourceBaseUrl: function (module) {
 
@@ -163,7 +237,8 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
         }
 
         if (domNode) {
-
+//;debugger;            
+            message.template = helpers.getTemplateForNode(message.og.origin);
             CONSOLE_WRAPPER.renderMessage(message, domNode, options, helpers);
         }
 
@@ -221,7 +296,7 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
             }
         }
 
-        try {
+        try {            
             if (
                 domNode &&
                 domNode.children[0] &&
@@ -254,6 +329,19 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
         panelEl.innerHTML = "";        
     }
 
+    self.hide = function () {
+        self.getPanelEl().style.display = "none";
+    }
+    self.show = function () {
+        self.getPanelEl().style.display = "";
+    }
+    self.isShowing = function () {
+        // TODO: Make this more reliable.
+        return (self.getPanelEl().style.display === "");
+    }
+    self.destroy = function () {
+    }
+
 
     var buffer = [];
     function flushBuffer () {
@@ -282,46 +370,6 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
             return;
         }
 
-        var og = null;
-        var meta = null;
-
-        if (
-            typeof message === "object" &&
-            typeof message.og !== "undefined"
-        ) {
-            meta = message.meta;
-            og = message.og;
-        } else {
-            if (
-                typeof message === "object" &&
-                typeof message.getMeta === "function"
-            ) {
-                var obj = DECODER.generateFromMessage(message, DECODER.EXTENDED);
-                meta = obj.getMeta() || {};
-                og = obj;
-            } else {
-                var obj = null;                
-                if (
-                    typeof message === "object" &&
-                    message.sender &&
-                    message.receiver &&
-                    typeof message.meta === "string" &&
-                    typeof message.data === "string"
-                ) {
-                    obj = DECODER.generateFromMessage({
-                        meta: JSON.parse(message.meta || "{}") || {},
-                        data: message.data
-                    }, DECODER.EXTENDED);
-                } else {
-                    obj = DECODER.generateFromMessage({
-                        meta: meta || {},
-                        data: encoder.encode(message, {}, {})
-                    }, DECODER.EXTENDED);
-                }
-                meta = obj.getMeta() || {};
-                og = obj;
-            }
-        }
 
         var helpers = Object.create(commonHelpers);
         helpers.helpers = helpers;
@@ -343,21 +391,20 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
                 var context = UTIL.copy(args[1].args);
                 context.message = args[1].message;
                 self.emit(name, context);
+            } else
+            if (name === "inspectNode") {
+                self.emit(name, {
+                    message: {
+                        node: args[1].args.node,
+                        template: helpers.getTemplateForNode(args[1].args.node)
+                    }
+                });
             } else {
                 console.error("helpers.dispatchEvent()", name, args);
                 throw new Error("NYI");
             }
         };
 
-//console.log("META", meta);
-
-        var node = og.getOrigin();
-
-//console.log("NODE", node);
-        
-        var template = RENDERERS.getTemplateForNode(node);
-
-//console.log("template!!!", template);
 
         if (options.view === "detail") {
 
@@ -369,8 +416,67 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
 
         } else {
 
+            var og = null;
+            var meta = null;
+    
+            if (
+                typeof message === "object" &&
+                typeof message.og !== "undefined"
+            ) {
+                meta = message.meta;
+                og = message.og;
+            } else {
+                if (
+                    typeof message === "object" &&
+                    typeof message.getMeta === "function"
+                ) {
+                    var obj = DECODER.generateFromMessage(message, DECODER.EXTENDED);
+                    meta = obj.getMeta() || {};
+                    og = obj;
+                } else {
+                    var obj = null;                
+                    if (
+                        typeof message === "object" &&
+                        message.sender &&
+                        message.receiver &&
+                        typeof message.meta === "string" &&
+                        typeof message.data === "string"
+                    ) {
+                        obj = DECODER.generateFromMessage({
+                            meta: JSON.parse(message.meta || "{}") || {},
+                            data: message.data
+                        }, DECODER.EXTENDED);
+                    } else {
+                        obj = DECODER.generateFromMessage({
+                            meta: meta || {},
+                            data: encoder.encode(message, {}, {})
+                        }, DECODER.EXTENDED);
+                    }
+                    meta = obj.getMeta() || {};
+                    og = obj;
+                }
+            }
+
+            //console.log("META", meta);
+
+            var node = og.getOrigin();
+
+            //console.log("NODE", node);
+            /*
+                    var template = PHP_RENDERERS.getTemplateForNode(node);
+
+                    if (!template) {
+                        template = INSIGHT_RENDERERS.getTemplateForNode(node);
+                    }
+                    
+            console.log("template!!!", template);
+            if (!template) {
+                console.log("NO template for message", message, node)
+            }
+            */
+
             var msg = {
-                render: function (el, view) {
+                render: function (el, view, messageObject) {
 
                     // Nothing to render for groups. Child nodes have already been inserted.
                     // TODO: Maybe do not insert child nodes until expanding?
@@ -386,13 +492,47 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
                         options.view = [ options.view ];
                     }
 
+                    // HACK
+                    var _og = og;
+                    if (
+                        _og.origin.type === "reference" ||
+                        _og.origin.meta.renderer === "structures/table" ||
+                        _og.origin.meta.renderer === "structures/trace"
+                    ) {
+                        var tpl = null;
+                        if (_og.origin.type === "reference") {
+                            tpl = commonHelpers.getTemplateModuleForNode(_og.instances[0]);                        
+                        } else
+                        if (
+                            _og.origin.meta.renderer === "structures/table" ||
+                            _og.origin.meta.renderer === "structures/trace"                                
+                        ) {
+                            tpl = commonHelpers.getTemplateModuleForNode(_og.origin);                        
+                        }                        
+                        var tplDec = tpl.getTemplateDeclaration();
+                        if (tplDec.VAR_hideShortTagOnExpand === false) {
+                            messageObject.postRender.keeptitle = true;
+                        }
+                    }
+                    //;debugger;
+//getTemplateForNode
+                    var template = helpers.getTemplateModuleForNode(node);
+//                    var tpl = template.getTemplateDeclaration();
+                    /*                    
+                    var rawTpl = template.getTemplate(helpers).getRawTemplate();
+                    if (rawTpl.VAR_hideShortTagOnExpand === false) {
+                        messageObject.postRender.keeptitle = true;
+                    }
+*/
                     template.renderObjectGraphToNode(node, el, options, helpers);
                 },
-                template: template.getTemplate(helpers),
+                template: null,//template.getTemplate(helpers),
                 meta: meta,
                 og: og,
                 options: {},
-                helpers: helpers
+                helpers: helpers,
+                //domain: message.domain,
+                context: message.context
             };
 
             renderSupervisor.appendMessageToNode(panelEl, msg);
@@ -408,40 +548,67 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
     }
 
 
-    self.getAPI = function () {
-        return {
-            renderMessageInto: function (panelEl, message) {
-                self.appendMessage(message, {
-                    panelEl: panelEl,
-                    clear: true,
-                    view: "detail"
+    var consoles = {};
+
+    var publicAPI = {
+        renderMessageInto: function (panelEl, message) {
+            self.appendMessage(message, {
+                panelEl: panelEl,
+                clear: true,
+                view: "detail"
+            });
+        },
+        log: function (message) {
+
+            // TODO: Render message.
+
+            self.appendMessage(message);
+        },
+        send: function (message) {
+
+            if (!Array.isArray(message)) {
+                message = [
+                    message
+                ];
+            }
+
+            receiverChannel.parseReceivedPostMessage(message);       
+        },
+        clear: self.clear.bind(self),
+        on: self.on.bind(self),
+        off: self.off.bind(self),
+        consoleForId: function (id) {
+
+            var el = panelEl.querySelector('DIV[fireconsoleid="' + id + '"]');
+            if (!el) {
+                el = WINDOW.document.createElement('div');
+                el.setAttribute("fireconsoleid", id);
+                panelEl.appendChild(el);
+            }
+            if (!consoles[id]) {
+                consoles[id] = new Fireconsole();
+                consoles[id].setPanelElement(el);
+                consoles[id].onAny(function () {
+                    self.emit.apply(self, arguments);
                 });
-            },
-            log: function (message) {
+            }
+            return consoles[id];
+        },
+        destroyConsoleForId: function (id) {
+            if (!consoles[id]) {
+                return;
+            }
+            consoles[id].destroy();
+            delete consoles[id];
+            var el = panelEl.querySelector('DIV[fireconsoleid="' + id + '"]');
+            if (el) {
+                el.parentNode.removeChild(el);
+            }
+        }
+    };
 
-                // TODO: Render message.
-
-                self.appendMessage(message);
-            },
-            send: function (message) {
-
-                if (!Array.isArray(message)) {
-                    message = [
-                        message
-                    ];
-                }
-
-                receiverChannel.parseReceivedPostMessage(message);       
-            },
-            clear: function () {
-
-                self.clear();
-
-                panelEl.innerHTML = "";
-            },
-            on: self.on.bind(self),
-            off: self.off.bind(self)
-        };
+    self.getAPI = function () {
+        return publicAPI;
     }
 }
 Fireconsole.prototype = Object.create(EVENT_EMITTER.prototype);
@@ -474,20 +641,13 @@ exports.main = function (JSONREP, node) {
             });
         }
 
-        return JSONREP.makeRep(
-            [
-                '<div class="console-container">',
-                    '<div class="console-panel"></div>',
-                '</div>'
-            ].join("\n"),
-            {
-                on: {
-                    mount: function (el) {
+        return JSONREP.makeRep('<div></div>', {
+            on: {
+                mount: function (el) {
 
-                        fireconsole.setPanelElement(el.querySelector("DIV.console-panel"));
-                    }
+                    fireconsole.setPanelElement(el);
                 }
             }
-        );
+        });
     });
 };
