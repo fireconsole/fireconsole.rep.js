@@ -4,7 +4,7 @@
     "pm": {
         "publish": "npm"
     },
-    "dependencies": {
+    "devDependencies": {
         "bash.origin": "^0.1.65",
         "bash.origin.express": "^0.1.4",
         "bash.origin.test": "^0.1.35",
