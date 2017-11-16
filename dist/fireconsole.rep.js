@@ -469,8 +469,7 @@ DomplateTag.prototype =
         js = js.replace('__SELF__JS__',js.replace(/\'/g,'\\\''));
         
 //system.print(js,'JS');
-
-
+        
         this.renderMarkup = eval(js);
 
         DomplateDebug.endGroup();
@@ -3050,7 +3049,7 @@ this.isArguments = function (object) {
 }();
 
 }).call(this,require('_process'))
-},{"_process":178}],4:[function(require,module,exports){
+},{"_process":192}],4:[function(require,module,exports){
 
 /* Binary */
 // -- tlrobinson Tom Robinson
@@ -4142,7 +4141,7 @@ exports.B_TRANSCODE = function(bytes, offset, length, sourceCharset, targetChars
 };
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":176}],10:[function(require,module,exports){
+},{"buffer":190}],10:[function(require,module,exports){
 
 // -- kriskowal Kris Kowal Copyright (C) 2009-2010 MIT License
 
@@ -9572,8 +9571,8 @@ var WINDOW = window;
 
 var EVENT_EMITTER = require("eventemitter2").EventEmitter2;
 var WILDFIRE = require("wildfire-for-js/lib/wildfire");
-var RENDERERS = require("insight.renderers.default/lib/insight/pack");
 var CONSOLE_WRAPPER = require("insight.renderers.default/lib/insight/wrappers/console");
+var VIEWER_WRAPPER = require("insight.renderers.default/lib/insight/wrappers/viewer");
 var ENCODER = require("insight-for-js/lib/encoder/default");
 var DECODER = require("insight-for-js/lib/decoder/default");
 var DOMPLATE_UTIL = require("domplate/lib/util");
@@ -9605,6 +9604,16 @@ var UTIL = {
     }
 };
 
+var templatePacks = {
+    "byid": {
+        "php": require("insight.renderers.default/lib/php/pack"),
+        "insight": require("insight.renderers.default/lib/insight/pack")
+    },
+    "list": []
+};
+templatePacks.list.push(templatePacks.byid["php"]);
+templatePacks.list.push(templatePacks.byid["insight"]);
+
 var commonHelpers = {
     helpers: null,
     // NOTE: This should only be called once or with an ID to replace existing
@@ -9615,12 +9624,71 @@ var commonHelpers = {
     getTemplateForId: function getTemplateForId(id) {
         throw new Error("NYI - commonHelpers.getTemplateForid (in " + module.id + ")");
     },
+    getTemplateModuleForNode: function getTemplateModuleForNode(node) {
+
+        //console.log("getTemplateModuleForNode", node);
+        //;debugger;
+        var found = null;
+
+        var og = node.og || node.getObjectGraph(),
+            ogNode = og.origin,
+            meta = og.meta;
+
+        // Match message-based renderers
+        if (node === ogNode && meta && meta.renderer) {
+            if (!node.meta) node.meta = {};
+            var pack = false;
+            var id = "http://registry.pinf.org/cadorn.org/renderers/packages/insight/0";
+            if (meta.renderer.substring(0, id.length + 1) === id + ":") {
+                if (node === node.getObjectGraph().getOrigin()) {
+                    node.meta.renderer = meta.renderer.substring(id.length + 1);
+                }
+                pack = "insight";
+            }
+            if (pack) {
+                found = templatePacks.byid[pack].getTemplateForNode(node);
+            } else {
+                console.warn("Unknown renderer: " + meta.renderer);
+            }
+        }
+
+        // Match message-based language primitives
+        if (!found && meta && meta["lang.id"]) {
+            if (meta["lang.id"] == "registry.pinf.org/cadorn.org/github/renderers/packages/php/master") {
+                found = templatePacks.byid["php"].getTemplateForNode(node);
+                if (!found) {
+                    // lookup in default language pack
+                    found = templatePacks.byid["insight"].getTemplateForNode(node);
+                }
+            } else {
+                throw new Error("Unknown language ID: " + meta["lang.id"]);
+            }
+        } else if (!found) {
+            //console.log("getTemplateModuleForNode() - !found");
+            for (var i = templatePacks.list.length - 1; i >= 0; i--) {
+                if (typeof templatePacks.list[i].getTemplateForNode == "function" && (found = templatePacks.list[i].getTemplateForNode(node))) {
+                    break;
+                }
+            }
+        }
+        if (!found) {
+            console.error("ERROR: Template for node '" + node.type + "' not found! (in " + module.id + ")", node);
+            return false;
+        }
+        return found;
+    },
     getTemplateForNode: function getTemplateForNode(node) {
         if (!node) {
             throw new Error("No node specified!");
         }
-        var template = RENDERERS.getTemplateForNode(node).getTemplate(this.helpers);
-        return template;
+        //console.log("getTemplateForNode", node);
+
+        var template = commonHelpers.getTemplateModuleForNode(node);
+
+        //        "lang.id":"registry.pinf.org/cadorn.org/github/renderers/packages/php/master"
+
+        //        var template = INSIGHT_RENDERERS.getTemplateForNode(node).getTemplate(this.helpers);
+        return template.getTemplate(this.helpers);
     },
     getResourceBaseUrl: function getResourceBaseUrl(module) {
 
@@ -9705,7 +9773,8 @@ function Fireconsole() {
         }
 
         if (domNode) {
-
+            //;debugger;            
+            message.template = helpers.getTemplateForNode(message.og.origin);
             CONSOLE_WRAPPER.renderMessage(message, domNode, options, helpers);
         }
 
@@ -9767,6 +9836,28 @@ function Fireconsole() {
         }
     }
 
+    self.getPanelEl = function () {
+        return panelEl;
+    };
+
+    self.clear = function (options) {
+        options = options || {};
+        var panelEl = options.panelEl || self.getPanelEl();
+        panelEl.innerHTML = "";
+    };
+
+    self.hide = function () {
+        self.getPanelEl().style.display = "none";
+    };
+    self.show = function () {
+        self.getPanelEl().style.display = "";
+    };
+    self.isShowing = function () {
+        // TODO: Make this more reliable.
+        return self.getPanelEl().style.display === "";
+    };
+    self.destroy = function () {};
+
     var buffer = [];
     function flushBuffer() {
         if (!buffer.length || !panelEl) return;
@@ -9776,26 +9867,19 @@ function Fireconsole() {
 
     var renderSupervisor = new Supervisor();
 
-    self.appendMessage = function (message) {
+    self.appendMessage = function (message, options) {
+
+        options = options || {};
+
+        if (options.clear) {
+            self.clear(options);
+        }
+
+        var panelEl = options.panelEl || self.getPanelEl();
+
         if (!panelEl) {
             buffer.push(message);
             return;
-        }
-
-        var og = null;
-        var meta = null;
-
-        if (typeof message.getMeta === "function") {
-            var obj = DECODER.generateFromMessage(message, DECODER.EXTENDED);
-            meta = obj.getMeta() || {};
-            og = obj;
-        } else {
-            var obj = DECODER.generateFromMessage({
-                meta: {},
-                data: encoder.encode(message, {}, {})
-            }, DECODER.EXTENDED);
-            meta = obj.getMeta() || {};
-            og = obj;
         }
 
         var helpers = Object.create(commonHelpers);
@@ -9803,63 +9887,138 @@ function Fireconsole() {
         helpers.debug = false;
         helpers.dispatchEvent = function (name, args) {
 
-            var context = {
-                meta: args[1].args,
-                message: args[1].message
-            };
             if (name === "expand") {
                 //self.emit("expandRow", context);
             } else if (name === "contract") {
                 //self.emit("contractRow", context);
-            } else if (name === "inspectMessage" || name === "inspectFile") {
+            } else if (name === "inspectMessage") {
+                self.emit(name, {
+                    message: args[1].message
+                });
+            } else if (name === "inspectFile") {
+                var context = UTIL.copy(args[1].args);
+                context.message = args[1].message;
                 self.emit(name, context);
+            } else if (name === "inspectNode") {
+                self.emit(name, {
+                    message: {
+                        node: args[1].args.node,
+                        template: helpers.getTemplateForNode(args[1].args.node)
+                    }
+                });
             } else {
                 console.error("helpers.dispatchEvent()", name, args);
                 throw new Error("NYI");
             }
         };
 
-        //console.log("META", meta);
+        if (options.view === "detail") {
 
-        var node = og.getOrigin();
+            VIEWER_WRAPPER.renderMessage(message, panelEl, {
+                view: ["detail"]
+            }, helpers);
+        } else {
 
-        //console.log("NODE", node);
+            var og = null;
+            var meta = null;
 
-        var template = RENDERERS.getTemplateForNode(node);
-
-        //console.log("template!!!", template);
-
-        var options = {};
-
-        var msg = {
-            render: function render(el, view) {
-
-                // Nothing to render for groups. Child nodes have already been inserted.
-                // TODO: Maybe do not insert child nodes until expanding?
-                if (typeof meta["group.start"] !== "undefined" && meta["group.start"]) {
-                    return;
-                }
-
-                options = UTIL.copy(options);
-                if (typeof view != "undefined") {
-                    options.view = view;
-                }
-                if (typeof options.view != "array") {
-                    options.view = [options.view];
-
-                    template.renderObjectGraphToNode(node, el, options, helpers);
+            if ((typeof message === "undefined" ? "undefined" : _typeof(message)) === "object" && typeof message.og !== "undefined") {
+                meta = message.meta;
+                og = message.og;
+            } else {
+                if ((typeof message === "undefined" ? "undefined" : _typeof(message)) === "object" && typeof message.getMeta === "function") {
+                    var obj = DECODER.generateFromMessage(message, DECODER.EXTENDED);
+                    meta = obj.getMeta() || {};
+                    og = obj;
                 } else {
-                    throw new Error("NYI");
+                    var obj = null;
+                    if ((typeof message === "undefined" ? "undefined" : _typeof(message)) === "object" && message.sender && message.receiver && typeof message.meta === "string" && typeof message.data === "string") {
+                        obj = DECODER.generateFromMessage({
+                            meta: JSON.parse(message.meta || "{}") || {},
+                            data: message.data
+                        }, DECODER.EXTENDED);
+                    } else {
+                        obj = DECODER.generateFromMessage({
+                            meta: meta || {},
+                            data: encoder.encode(message, {}, {})
+                        }, DECODER.EXTENDED);
+                    }
+                    meta = obj.getMeta() || {};
+                    og = obj;
                 }
-            },
-            template: template.getTemplate(helpers),
-            meta: meta,
-            og: og,
-            options: options,
-            helpers: helpers
-        };
+            }
 
-        renderSupervisor.appendMessageToNode(panelEl, msg);
+            //console.log("META", meta);
+
+            var node = og.getOrigin();
+
+            //console.log("NODE", node);
+            /*
+                    var template = PHP_RENDERERS.getTemplateForNode(node);
+                     if (!template) {
+                        template = INSIGHT_RENDERERS.getTemplateForNode(node);
+                    }
+                    
+            console.log("template!!!", template);
+            if (!template) {
+                console.log("NO template for message", message, node)
+            }
+            */
+
+            var msg = {
+                render: function render(el, view, messageObject) {
+
+                    // Nothing to render for groups. Child nodes have already been inserted.
+                    // TODO: Maybe do not insert child nodes until expanding?
+                    if (typeof meta["group.start"] !== "undefined" && meta["group.start"]) {
+                        return;
+                    }
+
+                    var options = {};
+                    if (view) {
+                        options.view = view;
+                    }
+                    if (typeof options.view !== "array") {
+                        options.view = [options.view];
+                    }
+
+                    // HACK
+                    var _og = og;
+                    if (_og.origin.type === "reference" || _og.origin.meta.renderer === "structures/table" || _og.origin.meta.renderer === "structures/trace") {
+                        var tpl = null;
+                        if (_og.origin.type === "reference") {
+                            tpl = commonHelpers.getTemplateModuleForNode(_og.instances[0]);
+                        } else if (_og.origin.meta.renderer === "structures/table" || _og.origin.meta.renderer === "structures/trace") {
+                            tpl = commonHelpers.getTemplateModuleForNode(_og.origin);
+                        }
+                        var tplDec = tpl.getTemplateDeclaration();
+                        if (tplDec.VAR_hideShortTagOnExpand === false) {
+                            messageObject.postRender.keeptitle = true;
+                        }
+                    }
+                    //;debugger;
+                    //getTemplateForNode
+                    var template = helpers.getTemplateModuleForNode(node);
+                    //                    var tpl = template.getTemplateDeclaration();
+                    /*                    
+                    var rawTpl = template.getTemplate(helpers).getRawTemplate();
+                    if (rawTpl.VAR_hideShortTagOnExpand === false) {
+                        messageObject.postRender.keeptitle = true;
+                    }
+                    */
+                    template.renderObjectGraphToNode(node, el, options, helpers);
+                },
+                template: null, //template.getTemplate(helpers),
+                meta: meta,
+                og: og,
+                options: {},
+                helpers: helpers,
+                //domain: message.domain,
+                context: message.context
+            };
+
+            renderSupervisor.appendMessageToNode(panelEl, msg);
+        }
 
         /*
                 template.renderObjectGraphToNode(node, el, {
@@ -9870,23 +10029,65 @@ function Fireconsole() {
         */
     };
 
-    self.getAPI = function () {
-        return {
-            log: function log(message) {
+    var consoles = {};
 
-                // TODO: Render message.
+    var publicAPI = {
+        renderMessageInto: function renderMessageInto(panelEl, message) {
+            self.appendMessage(message, {
+                panelEl: panelEl,
+                clear: true,
+                view: "detail"
+            });
+        },
+        log: function log(message) {
 
-                self.appendMessage(message);
-            },
-            send: function send(message) {
+            // TODO: Render message.
 
-                if (!Array.isArray(message)) {
-                    message = [message];
-                }
+            self.appendMessage(message);
+        },
+        send: function send(message) {
 
-                receiverChannel.parseReceivedPostMessage(message);
+            if (!Array.isArray(message)) {
+                message = [message];
             }
-        };
+
+            receiverChannel.parseReceivedPostMessage(message);
+        },
+        clear: self.clear.bind(self),
+        on: self.on.bind(self),
+        off: self.off.bind(self),
+        consoleForId: function consoleForId(id) {
+
+            var el = panelEl.querySelector('DIV[fireconsoleid="' + id + '"]');
+            if (!el) {
+                el = WINDOW.document.createElement('div');
+                el.setAttribute("fireconsoleid", id);
+                panelEl.appendChild(el);
+            }
+            if (!consoles[id]) {
+                consoles[id] = new Fireconsole();
+                consoles[id].setPanelElement(el);
+                consoles[id].onAny(function () {
+                    self.emit.apply(self, arguments);
+                });
+            }
+            return consoles[id];
+        },
+        destroyConsoleForId: function destroyConsoleForId(id) {
+            if (!consoles[id]) {
+                return;
+            }
+            consoles[id].destroy();
+            delete consoles[id];
+            var el = panelEl.querySelector('DIV[fireconsoleid="' + id + '"]');
+            if (el) {
+                el.parentNode.removeChild(el);
+            }
+        }
+    };
+
+    self.getAPI = function () {
+        return publicAPI;
     };
 }
 Fireconsole.prototype = Object.create(EVENT_EMITTER.prototype);
@@ -9896,30 +10097,39 @@ var FC = WINDOW.FC = fireconsole.getAPI();
 
 exports.main = function (JSONREP, node) {
 
-    if (node.messages) {
-        node.messages.map(fireconsole.appendMessage);
-    }
-
-    if (node.load) {
-        node.load.map(function (uri) {
-            var script = WINDOW.document.createElement('script');
-            script.type = 'text/javascript';
-            script.src = uri;
-            WINDOW.document.getElementsByTagName('head')[0].appendChild(script);
+    return Promise.all(Object.keys(node.plugins || []).map(function (key) {
+        var panelNode = {};
+        panelNode[key] = node[key];
+        return JSONREP.markupNode(panelNode).then(function () {
+            return null;
         });
-    }
+    })).then(function () {
 
-    return JSONREP.makeRep(['<div class="console-container">', '<div class="console-panel"></div>', '</div>'].join("\n"), {
-        on: {
-            mount: function mount(el) {
-
-                fireconsole.setPanelElement(el.querySelector("DIV.console-panel"));
-            }
+        if (node.messages) {
+            node.messages.map(fireconsole.appendMessage);
         }
+
+        if (node.load) {
+            node.load.map(function (uri) {
+                var script = WINDOW.document.createElement('script');
+                script.type = 'text/javascript';
+                script.src = uri;
+                WINDOW.document.getElementsByTagName('head')[0].appendChild(script);
+            });
+        }
+
+        return JSONREP.makeRep('<div></div>', {
+            on: {
+                mount: function mount(el) {
+
+                    fireconsole.setPanelElement(el);
+                }
+            }
+        });
     });
 };
 
-},{"domplate/lib/util":2,"eventemitter2":3,"insight-for-js/lib/decoder/default":156,"insight-for-js/lib/encoder/default":157,"insight.renderers.default/lib/insight/pack":161,"insight.renderers.default/lib/insight/wrappers/console":172,"lodash/clone":122,"lodash/merge":139,"wildfire-for-js/lib/wildfire":155}],144:[function(require,module,exports){
+},{"domplate/lib/util":2,"eventemitter2":3,"insight-for-js/lib/decoder/default":156,"insight-for-js/lib/encoder/default":157,"insight.renderers.default/lib/insight/pack":161,"insight.renderers.default/lib/insight/wrappers/console":172,"insight.renderers.default/lib/insight/wrappers/viewer":173,"insight.renderers.default/lib/php/pack":176,"lodash/clone":122,"lodash/merge":139,"wildfire-for-js/lib/wildfire":155}],144:[function(require,module,exports){
 
 
 var CHANNEL = require("./channel");
@@ -10325,16 +10535,11 @@ Channel.prototype.parseReceived = function(rawHeaders, context, options) {
             throw err;
         }        
     }
-    parsing = true;
 
     options = options || {};
     options.skipChannelOpen = options.skipChannelOpen || false;
     options.skipChannelClose = options.skipChannelClose || false;
     options.enableContinuousParsing = options.enableContinuousParsing || false;
-
-    if(!options.skipChannelOpen) {
-        self.open(context);
-    }
 
     if (
         typeof rawHeaders != "object" ||
@@ -10346,6 +10551,25 @@ Channel.prototype.parseReceived = function(rawHeaders, context, options) {
         rawHeaders = text_header_to_object(rawHeaders);
     }
 
+    var headersFound = false;
+    rawHeaders.forEach(function (header) {
+        if (/x-wf-/i.test(header.name)) {
+            headersFound = true;
+        }
+    });
+    if (!headersFound) {
+        return;
+    }
+
+    if(!options.skipChannelOpen) {
+
+        // Include 'x-request-id' in context
+
+        self.open(context);
+    }
+
+    parsing = true;
+    
     // protocol related
     var protocolBuffers = (options.enableContinuousParsing)?this.sinks.protocolBuffers:{};
 
@@ -13221,7 +13445,6 @@ DIV.__NS__console-message > DIV.header > SPAN.fileline {
 }
 
 DIV.__NS__console-message[expanded=true] > DIV.header > SPAN.summary {
-    // NOTE: This does not work in Google Chrome!
     display: none;
 }
 
@@ -14049,7 +14272,10 @@ exports.supportsObjectGraphNode = function(node)
 };
 
 PACK.initTemplate(require, exports, module, {
-
+    __name: "table",
+    
+    VAR_hideShortTagOnExpand: false,
+    
     initRep: function(DOMPLATE, helpers)
     {
         with(DOMPLATE.tags)
@@ -14158,18 +14384,36 @@ PACK.initTemplate(require, exports, module, {
         
                 onCellClick: function(event) {
                     event.stopPropagation();
+
+                    //var masterRow = this._getMasterRow(event.target);
+                    //masterRow.messageObject
+
                     var tag = event.target;
                     while(tag.parentNode) {
-                        if(tag.cellNodeObj) {
+                        if (tag.cellNodeObj) {
                             break;
                         }
                         tag = tag.parentNode;
                     }
                     helpers.dispatchEvent('inspectNode', [event, {
-                        "message": tag.cellNodeObj.getObjectGraph().message,
+                        //"message": masterRow.messageObject,
                         "args": {"node": tag.cellNodeObj}
                     }]);
-                }
+                },
+
+                _getMasterRow: function(row)
+                {
+                    while(true) {
+                        if(!row.parentNode) {
+                            return null;
+                        }
+                        if(helpers.util.hasClass(row, PACK.__NS__ + "console-message")) {
+                            break;
+                        }
+                        row = row.parentNode;
+                    }
+                    return row;
+                }                
             });
         }        
     }
@@ -14185,15 +14429,18 @@ exports.supportsObjectGraphNode = function(node)
 };
 
 PACK.initTemplate(require, exports, module, {
+    __name: "trace",
+
+    VAR_hideShortTagOnExpand: false,
 
     initRep: function(DOMPLATE, helpers)
     {
         with(DOMPLATE.tags)
         {
             return DOMPLATE.domplate({
-                
+
                 VAR_hideShortTagOnExpand: false,
-        
+                
                 tag:
                     DIV({"class": PACK.__NS__+"structures-trace"},
                         TABLE({"cellpadding": 3, "cellspacing": 0},
@@ -14280,12 +14527,32 @@ PACK.initTemplate(require, exports, module, {
                        return node.value.trace.value;
                     helpers.logger.error("Cannot get trace from node", node);
                 },
-                
+
+                postRender: function(node)
+                {
+;debugger;                    
+/*                    
+                    var node = this._getMasterRow(node);
+                    if (node.messageObject && typeof node.messageObject.postRender == "object")
+                    {
+                        if (typeof node.messageObject.postRender.keeptitle !== "undefined")
+                        {
+                            node.setAttribute("keeptitle", node.messageObject.postRender.keeptitle?"true":"false");
+                        }
+                    }
+*/                    
+                },
+
                 getCallList: function(node) {
 
                     // TODO: Do this in an init method
-                    node.getObjectGraph().message.postRender.keeptitle = true;
-
+/*
+                    if (node.messageObject && typeof node.messageObject.postRender == "object") {
+                        if (typeof node.messageObject.postRender.keeptitle !== "undefined") {
+                            node.setAttribute("keeptitle", "true");
+                        }
+                    }                    
+*/
                     try {
                         var list = [];
                         this.getTrace(node).forEach(function(node) {
@@ -14423,7 +14690,8 @@ exports.supportsObjectGraphNode = function(node)
 };
 
 PACK.initTemplate(require, exports, module, {
-
+    __name: "console",
+    
     initRep: function(DOMPLATE, helpers)
     {
         with(DOMPLATE.tags)
@@ -14713,17 +14981,12 @@ PACK.initTemplate(require, exports, module, {
                                 }]);
 
                                 if(!bodyTag.innerHTML) {
-                                    try {
-                                        if(typeof masterRow.messageObject.meta["group.start"] != "undefined") {                                            
-                                            this.groupNoMessagesTag.replace({}, bodyTag, this);
-                                        } else {
-                                            this.expandForMasterRow(masterRow, bodyTag);
-                                        }
-                                        this.postRender(bodyTag);
-                                    } catch(err) {
-                                        bodyTag.innerHTML = "NOTE: Group expansion here when using DeveloperCompanion is broken beyond repair with Firebug > 1.11. Please downgrade Firebug or use alternate tool such as Companion Console, Companion Window or FirePHP Extension. This feature will be overhauled in a future tool. I apologize for the inconvenience.";
-                                        //console.log("ERR", err.stack);
+                                    if(typeof masterRow.messageObject.meta["group.start"] != "undefined") {                                            
+                                        this.groupNoMessagesTag.replace({}, bodyTag, this);
+                                    } else {
+                                        this.expandForMasterRow(masterRow, bodyTag);
                                     }
+                                    this.postRender(bodyTag);
                                 }
                             }
                         } else
@@ -14799,7 +15062,7 @@ PACK.initTemplate(require, exports, module, {
                 expandForMasterRow: function(masterRow, bodyTag) {
                     masterRow.setAttribute("expanded", "true");
 
-                    masterRow.messageObject.render(bodyTag, "detail");
+                    masterRow.messageObject.render(bodyTag, "detail", masterRow.messageObject);
 
 /*
                     var rep = this._getRep(masterRow.messageObject, this.CONST_Normal);
@@ -14843,7 +15106,8 @@ exports.supportsObjectGraphNode = function(node)
 };
 
 PACK.initTemplate(require, exports, module, {
-
+    __name: "viewer",
+    
     initRep: function(DOMPLATE, helpers)
     {
         with(DOMPLATE.tags)
@@ -14944,6 +15208,10 @@ exports.init = function(packExports, packModule, packOptions) {
             };
         }
 
+        exports.getTemplateDeclaration = function () {
+            return template;
+        }
+
         exports.getTemplate = function(helpers, subclass) {
 
             if (helpers.debug) {
@@ -15001,6 +15269,774 @@ exports.init = function(packExports, packModule, packOptions) {
 }
 
 },{"domplate/lib/domplate":1}],175:[function(require,module,exports){
+
+module.exports = function () {/*
+
+///*######################################################################
+//#   primitives/array
+//#####################################################################
+
+SPAN.__NS__map > SPAN {
+    color: green;
+    font-weight: normal;
+}
+
+SPAN.__NS__map > .pair > SPAN.delimiter,
+SPAN.__NS__map > .pair > SPAN.separator {
+    color: green;
+}
+
+SPAN.__NS__array > SPAN {
+    color: green;
+    font-weight: normal;
+}
+
+SPAN.__NS__array > .element > SPAN.separator {
+    color: green;
+}
+
+///*######################################################################
+//#   primitives/boolean
+//#####################################################################
+
+SPAN.__NS__boolean {
+    color: navy;
+}
+
+
+///*######################################################################
+//#   primitives/exception
+//#####################################################################
+
+SPAN.__NS__exception {
+    font-weight: bold;
+    color: red;
+}
+
+
+///*######################################################################
+//#   primitives/float
+//#####################################################################
+
+SPAN.__NS__float {
+    color: green;
+}
+
+
+///*######################################################################
+//#   primitives/integer
+//#####################################################################
+
+SPAN.__NS__integer {
+    color: green;
+}
+
+
+///*######################################################################
+//#   primitives/null
+//#####################################################################
+
+SPAN.__NS__null {
+    color: navy;
+}
+
+
+///*######################################################################
+//#   primitives/object
+//#####################################################################
+
+
+SPAN.__NS__dictionary > SPAN {
+    color: brown;
+    font-weight: bold;
+}
+
+SPAN.__NS__dictionary > DIV.member {
+    display: block;
+    padding-left: 20px;
+}
+
+SPAN.__NS__dictionary > .member > SPAN.name {
+    color: black;
+    padding-left: 12px;
+}
+
+SPAN.__NS__dictionary > .member > SPAN.name[decorator=private-static] {
+  background: url(__RESOURCE__images/object-member-visibility-sprite.png) no-repeat -4px -2px;
+}
+SPAN.__NS__dictionary > .member > SPAN.name[decorator=protected-static] {
+  background: url(__RESOURCE__images/object-member-visibility-sprite.png) no-repeat -4px -18px;
+}
+SPAN.__NS__dictionary > .member > SPAN.name[decorator=public-static] {
+  background: url(__RESOURCE__images/object-member-visibility-sprite.png) no-repeat -4px -34px;
+}
+SPAN.__NS__dictionary > .member > SPAN.name[decorator=undeclared-static] {
+  background: url(__RESOURCE__images/object-member-visibility-sprite.png) no-repeat -4px -50px;
+}
+SPAN.__NS__dictionary > .member > SPAN.name[decorator=private] {
+  background: url(__RESOURCE__images/object-member-visibility-sprite.png) no-repeat -4px -66px;
+}
+SPAN.__NS__dictionary > .member > SPAN.name[decorator=protected] {
+  background: url(__RESOURCE__images/object-member-visibility-sprite.png) no-repeat -4px -82px;
+}
+SPAN.__NS__dictionary > .member > SPAN.name[decorator=public] {
+  background: url(__RESOURCE__images/object-member-visibility-sprite.png) no-repeat -4px -98px;
+}
+SPAN.__NS__dictionary > .member > SPAN.name[decorator=undeclared] {
+  background: url(__RESOURCE__images/object-member-visibility-sprite.png) no-repeat -4px -114px;
+}
+
+SPAN.__NS__dictionary > .member > SPAN.delimiter,
+SPAN.__NS__dictionary > .member > SPAN.separator,
+SPAN.__NS__dictionary > .member SPAN.more {
+    color: brown;
+}
+
+
+///*######################################################################
+//#   primitives/resource
+//#####################################################################
+
+SPAN.__NS__resource {
+    color: navy;
+}
+
+
+///*######################################################################
+//#   primitives/string
+//#####################################################################
+
+SPAN.__NS__string {
+    color: black;
+}
+
+SPAN.__NS__string[wrapped=true] {
+    color: red;
+}
+
+SPAN.__NS__string > SPAN.special {
+    color: gray;
+    font-weight: bold;
+    padding-left: 3px;
+    padding-right: 3px;
+}
+
+SPAN.__NS__string > SPAN.trimmed {
+    color: #FFFFFF;
+    background-color: blue;
+    padding-left: 5px;
+    padding-right: 5px;
+    margin-left: 5px;
+}
+
+*/}
+
+},{}],176:[function(require,module,exports){
+
+module.id = module.id || "php_pack";
+
+require("../pack-helper").init(exports, module, {
+    css: require("./pack.css.js").toString().split("\n").slice(1, -1).filter(function (line) {
+        if (/^\/\//.test(line)) {
+            return false;
+        }
+        return true;
+    }).join("\n"),
+    getTemplates: function()
+    {
+        return [
+
+            // Second: Utility messages matched by various specific criteria
+            require("../insight/util/trimmed"),
+
+            require("./primitives/array-indexed"),
+            require("./primitives/array-associative"),
+            require("./primitives/boolean"),
+            require("./primitives/exception"),
+            require("./primitives/float"),
+            require("./primitives/integer"),
+            require("./primitives/null"),
+            require("./primitives/object"),
+            require("./primitives/object-reference"),
+            require("./primitives/resource"),
+            require("./primitives/string"),
+            require("./primitives/unknown")
+        ];
+    }
+});
+
+},{"../insight/util/trimmed":171,"../pack-helper":174,"./pack.css.js":175,"./primitives/array-associative":177,"./primitives/array-indexed":178,"./primitives/boolean":179,"./primitives/exception":180,"./primitives/float":181,"./primitives/integer":182,"./primitives/null":183,"./primitives/object":185,"./primitives/object-reference":184,"./primitives/resource":186,"./primitives/string":187,"./primitives/unknown":188}],177:[function(require,module,exports){
+
+var PACK = require("../pack");
+var MAP_TEMPLATE = require("../../insight/primitives/map");
+
+exports.supportsObjectGraphNode = function(node)
+{
+    return (node.type=="map" && node.meta && node.meta["lang.type"]=="array");
+}
+
+PACK.initTemplate(require, exports, module, {
+
+    __name: "array-associative",
+    
+    initRep: function(DOMPLATE, helpers)
+    {
+        with(DOMPLATE.tags)
+        {
+            return DOMPLATE.domplate({
+                
+                inherits: MAP_TEMPLATE,
+        
+                VAR_label: "array"
+            });
+        }        
+    }
+});
+
+},{"../../insight/primitives/map":165,"../pack":176}],178:[function(require,module,exports){
+
+var PACK = require("../pack");
+var ARRAY_TEMPLATE = require("../../insight/primitives/array");
+
+exports.supportsObjectGraphNode = function(node)
+{
+    return (node.type=="array" && node.meta && node.meta["lang.type"]=="array");
+}
+
+PACK.initTemplate(require, exports, module, {
+
+    __name: "array-indexed",
+    
+    initRep: function(DOMPLATE, helpers)
+    {
+        with(DOMPLATE.tags)
+        {
+            return DOMPLATE.domplate({
+                
+                inherits: ARRAY_TEMPLATE,
+        
+                VAR_label: "array"
+            });
+        }        
+    }
+});
+
+},{"../../insight/primitives/array":162,"../pack":176}],179:[function(require,module,exports){
+
+var PACK = require("../pack");
+
+exports.supportsObjectGraphNode = function(node)
+{
+    return (node.meta && node.meta["lang.type"]=="boolean");
+}
+
+PACK.initTemplate(require, exports, module, {
+
+    __name: "boolean",
+    
+    initRep: function(DOMPLATE, helpers)
+    {
+        with(DOMPLATE.tags)
+        {
+            return DOMPLATE.domplate({
+                
+                tag:
+                    SPAN({"class": PACK.__NS__+"boolean"}, "$node|getValue"),
+        
+                shortTag:
+                    SPAN({"class": PACK.__NS__+"boolean"}, "$node|getValue"),
+        
+                getValue: function(node) {
+                    return node.value.toUpperCase();
+                }  
+            });
+        }        
+    }
+});
+
+},{"../pack":176}],180:[function(require,module,exports){
+
+var PACK = require("../pack");
+var TRACE_TEMPLATE = require("../../insight/structures/trace");
+
+exports.supportsObjectGraphNode = function(node)
+{
+    return (node.type=="dictionary" && node.meta && node.meta["lang.type"]=="exception");
+}
+
+PACK.initTemplate(require, exports, module, {
+
+    __name: "exception",
+
+    VAR_hideShortTagOnExpand: false,
+    
+    initRep: function(DOMPLATE, helpers)
+    {
+        with(DOMPLATE.tags)
+        {
+            return DOMPLATE.domplate({
+                
+                inherits: TRACE_TEMPLATE,
+        
+                collapsedTag:
+                    SPAN({"class": PACK.__NS__+"exception"}, "$node|getCaption"),
+                
+                getCaption: function(node) {
+                    return node.meta["lang.class"] + ": " + node.value.message.value;
+                },
+                
+                getTrace: function(node) {
+                    if (node.type=="map")
+                        return [].concat(node.compact().trace.value);
+
+                    if (node.type=="dictionary")
+                        return [].concat(node.value.trace.value);
+                }  
+            });
+        }        
+    }
+});
+
+},{"../../insight/structures/trace":170,"../pack":176}],181:[function(require,module,exports){
+
+var PACK = require("../pack");
+
+exports.supportsObjectGraphNode = function(node)
+{
+    return (node.meta && node.meta["lang.type"]=="float");
+}
+
+PACK.initTemplate(require, exports, module, {
+
+    __name: "float",
+    
+    initRep: function(DOMPLATE, helpers)
+    {
+        with(DOMPLATE.tags)
+        {
+            return DOMPLATE.domplate({
+        
+                tag:
+                    SPAN({"class": PACK.__NS__+"float"}, "$node|getValue"),
+        
+                shortTag:
+                    SPAN({"class": PACK.__NS__+"float"}, "$node|getValue"),
+        
+                getValue: function(node) {
+                    return addCommas(node.value);
+                }    
+
+            });
+        }        
+    }
+});
+
+// @see http://www.mredkj.com/javascript/numberFormat.html
+function addCommas(nStr)
+{
+    nStr += '';
+    x = nStr.split('.');
+    x1 = x[0];
+    x2 = x.length > 1 ? '.' + x[1] : '';
+    var rgx = /(\d+)(\d{3})/;
+    while (rgx.test(x1)) {
+        x1 = x1.replace(rgx, '$1' + ',' + '$2');
+    }
+    return x1 + x2;
+}
+
+},{"../pack":176}],182:[function(require,module,exports){
+
+var PACK = require("../pack");
+
+exports.supportsObjectGraphNode = function(node)
+{
+    return (node.meta && node.meta["lang.type"]=="integer");
+}
+
+PACK.initTemplate(require, exports, module, {
+
+    __name: "integer",
+    
+    initRep: function(DOMPLATE, helpers)
+    {
+        with(DOMPLATE.tags)
+        {
+            return DOMPLATE.domplate({
+        
+                tag:
+                    SPAN({"class": PACK.__NS__+"integer"}, "$node|getValue"),
+        
+                shortTag:
+                    SPAN({"class": PACK.__NS__+"integer"}, "$node|getValue"),
+        
+                getValue: function(node) {
+                    return addCommas(node.value);
+                }    
+
+            });
+        }        
+    }
+});
+
+// @see http://www.mredkj.com/javascript/numberFormat.html
+function addCommas(nStr)
+{
+    nStr += '';
+    x = nStr.split('.');
+    x1 = x[0];
+    x2 = x.length > 1 ? '.' + x[1] : '';
+    var rgx = /(\d+)(\d{3})/;
+    while (rgx.test(x1)) {
+        x1 = x1.replace(rgx, '$1' + ',' + '$2');
+    }
+    return x1 + x2;
+}
+
+},{"../pack":176}],183:[function(require,module,exports){
+
+var PACK = require("../pack");
+
+exports.supportsObjectGraphNode = function(node)
+{
+    return (node.meta && node.meta["lang.type"]=="null");
+}
+
+PACK.initTemplate(require, exports, module, {
+
+    __name: "null",
+    
+    initRep: function(DOMPLATE, helpers)
+    {
+        with(DOMPLATE.tags)
+        {
+            return DOMPLATE.domplate({
+        
+                tag:
+                    SPAN({"class": PACK.__NS__+"null"}, "$node|getValue"),
+
+                shortTag:
+                    SPAN({"class": PACK.__NS__+"null"}, "$node|getValue"),
+
+                getValue: function(node) {
+                    return node.value.toUpperCase();
+                }
+
+            });
+        }        
+    }
+});
+
+},{"../pack":176}],184:[function(require,module,exports){
+
+var PACK = require("../pack");
+var REFERENCE_TEMPLATE = require("../../insight/primitives/reference");
+
+exports.supportsObjectGraphNode = function(node)
+{
+    return (node.type=="reference");
+}
+
+PACK.initTemplate(require, exports, module, {
+
+    __name: "object-reference",
+    
+    initRep: function(DOMPLATE, helpers)
+    {
+        with(DOMPLATE.tags)
+        {
+            return DOMPLATE.domplate({
+
+                inherits: REFERENCE_TEMPLATE
+        
+            });
+        }        
+    }
+});
+
+},{"../../insight/primitives/reference":166,"../pack":176}],185:[function(require,module,exports){
+
+var PACK = require("../pack");
+var DICTIONARY_TEMPLATE = require("../../insight/primitives/dictionary");
+
+exports.supportsObjectGraphNode = function(node)
+{
+    return (node.type=="dictionary" && node.meta && node.meta["lang.type"]=="object");
+}
+
+PACK.initTemplate(require, exports, module, {
+
+    __name: "object",
+    
+    initRep: function(DOMPLATE, helpers)
+    {
+        with(DOMPLATE.tags)
+        {
+            return DOMPLATE.domplate({
+
+                inherits: DICTIONARY_TEMPLATE,
+
+                getLabel: function(node) {
+                    return node.meta["lang.class"];
+                },
+                
+                getMemberNameDecorator: function(member) {
+        
+                    var decorator = [];
+        
+                    if(member.node.meta["lang.visibility"]) {
+                        decorator.push(member.node.meta["lang.visibility"]);
+                    } else
+                    if(member.node.meta["lang.undeclared"]) {
+                        decorator.push("undeclared");
+                    }
+        
+                    if(member.node.meta["lang.static"]) {
+                        decorator.push("static");
+                    }
+        
+                    return decorator.join("-");
+                }
+
+            });
+        }        
+    }
+});
+
+},{"../../insight/primitives/dictionary":164,"../pack":176}],186:[function(require,module,exports){
+
+var PACK = require("../pack");
+
+exports.supportsObjectGraphNode = function(node)
+{
+    return (node.meta && node.meta["lang.type"]=="resource");
+}
+
+PACK.initTemplate(require, exports, module, {
+
+    __name: "resource",
+    
+    initRep: function(DOMPLATE, helpers)
+    {
+        with(DOMPLATE.tags)
+        {
+            return DOMPLATE.domplate({
+
+                tag:
+                    SPAN({"class": PACK.__NS__+"resource"}, "[$node|getValue]"),
+        
+                shortTag:
+                    SPAN({"class": PACK.__NS__+"resource"}, "[$node|getValue]"),
+        
+                getValue: function(node) {
+                    return node.value.toUpperCase();
+                }    
+        
+            });
+        }        
+    }
+});
+
+},{"../pack":176}],187:[function(require,module,exports){
+
+var PACK = require("../pack");
+
+exports.supportsObjectGraphNode = function(node)
+{
+    return (node.meta && node.meta["lang.type"]=="string");
+}
+
+PACK.initTemplate(require, exports, module, {
+
+    __name: "string",
+    
+    initRep: function(DOMPLATE, helpers)
+    {
+        with(DOMPLATE.tags)
+        {
+            return DOMPLATE.domplate({
+                
+                VAR_wrapped: false,
+        
+                tag:
+                    SPAN({"class": PACK.__NS__+"string", "wrapped": "$node.wrapped"},
+                        IF("$node.wrapped", "'"),
+                        FOR("line", "$node|getValue",
+                            "$line.value",
+                            IF("$line.special", SPAN({"class": "special"}, "$line.specialvalue")),
+                            IF("$line.more", BR()),
+                            IF("$line.trimmed", TAG("$node|getTrimmedTag", {"node": "$node"}))
+                        ),
+                        IF("$node.wrapped", "'")),
+        
+                shortTag:
+                    SPAN({"class": PACK.__NS__+"string", "wrapped": "$node.wrapped"},
+                        IF("$node.wrapped", "'"),
+                        FOR("line", "$node|getShortValue",
+                            "$line.value",
+                            IF("$line.special", SPAN({"class": "special"}, "$line.specialvalue")),
+                            IF("$line.more", BR()),
+                            IF("$line.trimmed", TAG("$node|getTrimmedTag", {"node": "$node"}))
+                        ),
+                        IF("$node.wrapped", "'")),
+        
+                // TODO: Should be using the insight/util/trimmed tag but the tag is inclusion not working
+                trimmedNoticeTag: 
+                    SPAN({"class": "trimmed"},
+                        "$node|getNotice"
+                    ),
+        
+                getNotice: function(node) {
+                    return node.meta["encoder.notice"];
+                },
+                        
+                getTrimmedTag: function() {
+                    return this.trimmedNoticeTag;
+                },
+        
+                getValue: function(node) {
+                    var parts = node.value.split("\n");
+                    var lines = [];
+                    for( var i=0,c=parts.length ; i<c ; i++ ) {
+                        lines.push({
+                            "value": parts[i],
+                            "more": (i<c-1)?true:false,
+                            "special": false
+                        });
+                    }
+                    if(node.meta["encoder.trimmed"] && node.meta["encoder.notice"]) {
+                        lines.push({
+                            "value": "",
+                            "trimmed": true
+                        });
+                    }
+                    return lines;
+                },
+                
+                getShortValue: function(node) {
+                    var meta = node.getObjectGraph().getMeta();
+
+                    // TODO: This needs to be optimized
+
+                    var trimEnabled = true;
+                    var trimLength = 50;
+                    var trimNewlines = true;
+                    if(!node.parentNode) {
+                        // if a top-level string display 500 chars (but trim newlines)
+                        // but only if we are not asked to specifically trim
+                        if(typeof meta["string.trim.enabled"] == "undefined" || !meta["string.trim.enabled"]) {
+                            trimLength = 500;
+                        }
+                    }
+                    if(typeof meta["string.trim.enabled"] != "undefined") {
+                        trimEnabled = meta["string.trim.enabled"];
+                    }
+                    if(typeof meta["string.trim.length"] != "undefined" && meta["string.trim.length"]>=5) {
+                        trimLength = meta["string.trim.length"];
+                    }
+                    if(typeof meta["string.trim.newlines"] != "undefined") {
+                        trimNewlines = meta["string.trim.newlines"];
+                    }
+        
+                    var str = node.value;
+                    if(trimEnabled) {
+                        if(trimLength>-1) {
+                            str = cropString(str, trimLength);
+                        }
+                        if(trimNewlines) {
+                            str = escapeNewLines(str);
+                        }
+                    }
+        
+                    var parts = str.split("\n");
+                    var lines = [],
+                        parts2;
+                    for( var i=0,ci=parts.length ; i<ci ; i++ ) {
+                        parts2 = parts[i].split("|:_!_:|");
+                        for( var j=0,cj=parts2.length ; j<cj ; j++ ) {
+                            if(parts2[j]=="STRING_CROP") {
+                                lines.push({
+                                    "value": "",
+                                    "more": false,
+                                    "special": true,
+                                    "specialvalue": "..."
+                                });
+                            } else
+                            if(parts2[j]=="STRING_NEWLINE") {
+                                lines.push({
+                                    "value": "",
+                                    "more": false,
+                                    "special": true,
+                                    "specialvalue": "\\n"
+                                });
+                            } else {
+                                lines.push({
+                                    "value": parts2[j],
+                                    "more": (i<ci-1 && j==cj-1)?true:false
+                                });
+                            }
+                        }
+                    }
+                    if(node.meta["encoder.trimmed"] && node.meta["encoder.notice"]) {
+                        lines.push({
+                            "value": "",
+                            "trimmed": true
+                        });
+                    }
+                    return lines;
+                }
+            });
+        }        
+    }
+});
+
+function cropString(value, limit) {
+    limit = limit || 50;
+    if (value.length > limit) {
+        return value.substr(0, limit/2) + "|:_!_:|STRING_CROP|:_!_:|" + value.substr(value.length-limit/2);
+    } else {
+        return value;
+    }
+}
+
+function escapeNewLines(value) {
+    return (""+value).replace(/\r/g, "\\r").replace(/\n/g, "|:_!_:|STRING_NEWLINE|:_!_:|");
+}
+
+},{"../pack":176}],188:[function(require,module,exports){
+
+var PACK = require("../pack");
+
+exports.supportsObjectGraphNode = function(node)
+{
+    return (node.type=="text" && node.meta && node.meta["lang.type"]=="unknown");
+}
+
+PACK.initTemplate(require, exports, module, {
+
+    __name: "unknown",
+    
+    initRep: function(DOMPLATE, helpers)
+    {
+        with(DOMPLATE.tags)
+        {
+            return DOMPLATE.domplate({
+        
+                tag:
+                    DIV("UNKNOWN EXPANDED"),
+        
+                collapsedTag:
+                    DIV("UNKNOWN COLLAPSED"),
+        
+                shortTag:
+                    DIV("UNKNOWN SHORT")
+
+            });
+        }        
+    }
+});
+
+},{"../pack":176}],189:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -15116,7 +16152,7 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],176:[function(require,module,exports){
+},{}],190:[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
@@ -16832,7 +17868,7 @@ function numberIsNaN (obj) {
   return obj !== obj // eslint-disable-line no-self-compare
 }
 
-},{"base64-js":175,"ieee754":177}],177:[function(require,module,exports){
+},{"base64-js":189,"ieee754":191}],191:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = nBytes * 8 - mLen - 1
@@ -16918,7 +17954,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],178:[function(require,module,exports){
+},{}],192:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
