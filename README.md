@@ -1,5 +1,4 @@
 
-**Stability: Experimental. Use at your own risk!**
 
 | License | Source | &#8212;&raquo; | [Website](https://github.com/fireconsole/fireconsole.rep.js/tree/master/workspace.sh) | [npm](https://github.com/npm/npm) |
 | :---: | :---: | :---: | :---: | :---: |
