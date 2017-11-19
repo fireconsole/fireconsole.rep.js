@@ -12,7 +12,7 @@ console.log(">>>TEST_IGNORE_LINE:GET /dist/resources/insight.renderers.default/i
 
 describe("Suite", function() {
 
-    require('bash.origin.express').runForTestHooks(before, after, {
+    require('bash.origin.workspace').forPackage(__dirname + '/../..').LIB.BASH_ORIGIN_EXPRESS.runForTestHooks(before, after, {
         "routes": {
             "^/": {
                 "@github.com~jsonrep~jsonrep#s1": {
@@ -53,7 +53,7 @@ describe("Suite", function() {
 
         client.url('http://localhost:' + process.env.PORT + '/').pause(500);
 
-        var selector = 'BODY[renderer="jsonrep"] DIV[class="console-container"]';
+        var selector = 'BODY[renderer="jsonrep"]';
 
         client.waitForElementPresent(selector, 3000);
         

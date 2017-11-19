@@ -3,8 +3,8 @@ const WINDOW = window;
 
 const EVENT_EMITTER = require("eventemitter2").EventEmitter2;
 const WILDFIRE = require("wildfire-for-js/lib/wildfire");
-const RENDERERS = require("insight.renderers.default/lib/insight/pack");
 const CONSOLE_WRAPPER = require("insight.renderers.default/lib/insight/wrappers/console");
+const VIEWER_WRAPPER = require("insight.renderers.default/lib/insight/wrappers/viewer");
 const ENCODER = require("insight-for-js/lib/encoder/default");
 const DECODER = require("insight-for-js/lib/decoder/default");
 const DOMPLATE_UTIL = require("domplate/lib/util");
@@ -38,6 +38,18 @@ const UTIL = {
     }
 };
 
+
+var templatePacks = {
+    "byid": {
+        "php": require("insight.renderers.default/lib/php/pack"),
+        "insight": require("insight.renderers.default/lib/insight/pack")
+    },
+    "list": []
+};
+templatePacks.list.push(templatePacks.byid["php"]);
+templatePacks.list.push(templatePacks.byid["insight"]);
+
+
 var commonHelpers = {
     helpers: null,
     // NOTE: This should only be called once or with an ID to replace existing
@@ -54,12 +66,75 @@ var commonHelpers = {
     getTemplateForId: function(id) {
         throw new Error("NYI - commonHelpers.getTemplateForid (in " + module.id + ")");
     },
+    getTemplateModuleForNode: function (node) {
+
+//console.log("getTemplateModuleForNode", node);
+//;debugger;
+        var found = null;
+
+        var og = node.og || node.getObjectGraph(),
+            ogNode = og.origin,
+            meta = og.meta;
+
+        // Match message-based renderers
+        if (node === ogNode && meta && meta.renderer) {
+            if (!node.meta) node.meta = {};
+            var pack = false;
+            var id = "http://registry.pinf.org/cadorn.org/renderers/packages/insight/0";
+            if (meta.renderer.substring(0, id.length+1) === id + ":") {
+                if (node === node.getObjectGraph().getOrigin()) {
+                    node.meta.renderer = meta.renderer.substring(id.length+1);
+                }
+                pack = "insight";
+            }
+            if (pack) {
+                found = templatePacks.byid[pack].getTemplateForNode(node);
+            } else {
+                console.warn("Unknown renderer: " + meta.renderer);
+            }
+        }
+
+        // Match message-based language primitives
+        if (!found && meta && meta["lang.id"]) {
+            if (meta["lang.id"] == "registry.pinf.org/cadorn.org/github/renderers/packages/php/master") {
+                found = templatePacks.byid["php"].getTemplateForNode(node);
+                if (!found) {
+                    // lookup in default language pack
+                    found = templatePacks.byid["insight"].getTemplateForNode(node);
+                }
+            } else {
+                throw new Error("Unknown language ID: " + meta["lang.id"]);
+            }
+        } else
+        if (!found) {
+//console.log("getTemplateModuleForNode() - !found");
+            for (var i=templatePacks.list.length-1 ; i>=0 ; i--) {
+                if (
+                    typeof templatePacks.list[i].getTemplateForNode == "function" &&
+                    (found = templatePacks.list[i].getTemplateForNode(node))
+                ) {
+                    break;
+                }
+            }
+        }
+        if (!found) {
+            console.error("ERROR: Template for node '" + node.type + "' not found! (in " + module.id + ")", node);
+            return false;
+        }
+        return found;
+    },
     getTemplateForNode: function (node) {
         if (!node) {
             throw new Error("No node specified!");
         }
-        var template = RENDERERS.getTemplateForNode(node).getTemplate(this.helpers);
-        return template;
+//console.log("getTemplateForNode", node);
+
+        var template = commonHelpers.getTemplateModuleForNode(node);
+
+//        "lang.id":"registry.pinf.org/cadorn.org/github/renderers/packages/php/master"
+
+//        var template = INSIGHT_RENDERERS.getTemplateForNode(node).getTemplate(this.helpers);
+        return template.getTemplate(this.helpers);
     },
     getResourceBaseUrl: function (module) {
 
@@ -162,7 +237,8 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
         }
 
         if (domNode) {
-
+//;debugger;            
+            message.template = helpers.getTemplateForNode(message.og.origin);
             CONSOLE_WRAPPER.renderMessage(message, domNode, options, helpers);
         }
 
@@ -220,7 +296,7 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
             }
         }
 
-        try {
+        try {            
             if (
                 domNode &&
                 domNode.children[0] &&
@@ -243,6 +319,28 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
     }
 
 
+    self.getPanelEl = function () {
+        return panelEl;
+    }
+
+    self.clear = function (options) {
+        options = options || {};
+        var panelEl = options.panelEl || self.getPanelEl();
+        panelEl.innerHTML = "";        
+    }
+
+    self.hide = function () {
+        self.getPanelEl().style.display = "none";
+    }
+    self.show = function () {
+        self.getPanelEl().style.display = "";
+    }
+    self.isShowing = function () {
+        // TODO: Make this more reliable.
+        return (self.getPanelEl().style.display === "");
+    }
+    self.destroy = function () {
+    }
 
 
     var buffer = [];
@@ -257,98 +355,188 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
 
 	var renderSupervisor = new Supervisor();
 
-    self.appendMessage = function (message) {
+    self.appendMessage = function (message, options) {
+
+        options = options || {};
+
+        if (options.clear) {
+            self.clear(options);
+        }
+
+        var panelEl = options.panelEl || self.getPanelEl();
+        
         if (!panelEl) {
             buffer.push(message);
             return;
         }
 
-        var og = null;
-        var meta = null;
-
-        if (typeof message.getMeta === "function") {
-            var obj = DECODER.generateFromMessage(message, DECODER.EXTENDED);
-            meta = obj.getMeta() || {};
-            og = obj;
-        } else {
-            var obj = DECODER.generateFromMessage({
-                meta: {},
-                data: encoder.encode(message, {}, {})
-            }, DECODER.EXTENDED);
-            meta = obj.getMeta() || {};
-            og = obj;
-        }
 
         var helpers = Object.create(commonHelpers);
         helpers.helpers = helpers;
         helpers.debug = false;
         helpers.dispatchEvent = function (name, args) {
 
-            var context = {
-                meta: args[1].args,
-                message: args[1].message
-            };
             if (name === "expand") {
                 //self.emit("expandRow", context);
             } else
             if (name === "contract") {
                 //self.emit("contractRow", context);
             } else
-            if (
-                name === "inspectMessage" ||
-                name === "inspectFile"                
-            ) {
+            if (name === "inspectMessage") {
+                self.emit(name, {
+                    message: args[1].message
+                });
+            } else
+            if (name === "inspectFile") {
+                var context = UTIL.copy(args[1].args);
+                context.message = args[1].message;
                 self.emit(name, context);
+            } else
+            if (name === "inspectNode") {
+                self.emit(name, {
+                    message: {
+                        node: args[1].args.node,
+                        template: helpers.getTemplateForNode(args[1].args.node)
+                    }
+                });
             } else {
                 console.error("helpers.dispatchEvent()", name, args);
                 throw new Error("NYI");
             }
         };
 
-//console.log("META", meta);
 
-        var node = og.getOrigin();
+        if (options.view === "detail") {
 
-//console.log("NODE", node);
-        
-        var template = RENDERERS.getTemplateForNode(node);
+            VIEWER_WRAPPER.renderMessage(message, panelEl, {
+                view: [
+                    "detail"
+                ]
+            }, helpers);
 
-//console.log("template!!!", template);
+        } else {
 
-        var options = {};
-
-        var msg = {
-            render: function (el, view) {
-
-                // Nothing to render for groups. Child nodes have already been inserted.
-                // TODO: Maybe do not insert child nodes until expanding?
-                if (typeof meta["group.start"] !== "undefined" && meta["group.start"]) {
-                    return;
-                }
-
-                options = UTIL.copy(options);
-                if (typeof view != "undefined") {
-                    options.view = view;
-                }
-                if (typeof options.view != "array") {
-                    options.view = [options.view];
-
-                    template.renderObjectGraphToNode(node, el, options, helpers);
-                } else {
-                    throw new Error("NYI");
-                }
-            },
-            template: template.getTemplate(helpers),
-            meta: meta,
-            og: og,
-            options: options,
-            helpers: helpers
-        };
-
-
-
-        renderSupervisor.appendMessageToNode(panelEl, msg);
+            var og = null;
+            var meta = null;
     
+            if (
+                typeof message === "object" &&
+                typeof message.og !== "undefined"
+            ) {
+                meta = message.meta;
+                og = message.og;
+            } else {
+                if (
+                    typeof message === "object" &&
+                    typeof message.getMeta === "function"
+                ) {
+                    var obj = DECODER.generateFromMessage(message, DECODER.EXTENDED);
+                    meta = obj.getMeta() || {};
+                    og = obj;
+                } else {
+                    var obj = null;                
+                    if (
+                        typeof message === "object" &&
+                        message.sender &&
+                        message.receiver &&
+                        typeof message.meta === "string" &&
+                        typeof message.data === "string"
+                    ) {
+                        obj = DECODER.generateFromMessage({
+                            meta: JSON.parse(message.meta || "{}") || {},
+                            data: message.data
+                        }, DECODER.EXTENDED);
+                    } else {
+                        obj = DECODER.generateFromMessage({
+                            meta: meta || {},
+                            data: encoder.encode(message, {}, {})
+                        }, DECODER.EXTENDED);
+                    }
+                    meta = obj.getMeta() || {};
+                    og = obj;
+                }
+            }
+
+            //console.log("META", meta);
+
+            var node = og.getOrigin();
+
+            //console.log("NODE", node);
+            /*
+                    var template = PHP_RENDERERS.getTemplateForNode(node);
+
+                    if (!template) {
+                        template = INSIGHT_RENDERERS.getTemplateForNode(node);
+                    }
+                    
+            console.log("template!!!", template);
+            if (!template) {
+                console.log("NO template for message", message, node)
+            }
+            */
+
+            var msg = {
+                render: function (el, view, messageObject) {
+
+                    // Nothing to render for groups. Child nodes have already been inserted.
+                    // TODO: Maybe do not insert child nodes until expanding?
+                    if (typeof meta["group.start"] !== "undefined" && meta["group.start"]) {
+                        return;
+                    }
+
+                    var options = {};
+                    if (view) {
+                        options.view = view;
+                    }
+                    if (typeof options.view !== "array") {
+                        options.view = [ options.view ];
+                    }
+
+                    // HACK
+                    var _og = og;
+                    if (
+                        _og.origin.type === "reference" ||
+                        _og.origin.meta.renderer === "structures/table" ||
+                        _og.origin.meta.renderer === "structures/trace"
+                    ) {
+                        var tpl = null;
+                        if (_og.origin.type === "reference") {
+                            tpl = commonHelpers.getTemplateModuleForNode(_og.instances[0]);                        
+                        } else
+                        if (
+                            _og.origin.meta.renderer === "structures/table" ||
+                            _og.origin.meta.renderer === "structures/trace"                                
+                        ) {
+                            tpl = commonHelpers.getTemplateModuleForNode(_og.origin);                        
+                        }                        
+                        var tplDec = tpl.getTemplateDeclaration();
+                        if (tplDec.VAR_hideShortTagOnExpand === false) {
+                            messageObject.postRender.keeptitle = true;
+                        }
+                    }
+                    //;debugger;
+//getTemplateForNode
+                    var template = helpers.getTemplateModuleForNode(node);
+//                    var tpl = template.getTemplateDeclaration();
+                    /*                    
+                    var rawTpl = template.getTemplate(helpers).getRawTemplate();
+                    if (rawTpl.VAR_hideShortTagOnExpand === false) {
+                        messageObject.postRender.keeptitle = true;
+                    }
+*/
+                    template.renderObjectGraphToNode(node, el, options, helpers);
+                },
+                template: null,//template.getTemplate(helpers),
+                meta: meta,
+                og: og,
+                options: {},
+                helpers: helpers,
+                //domain: message.domain,
+                context: message.context
+            };
+
+            renderSupervisor.appendMessageToNode(panelEl, msg);
+        }
 
 /*
         template.renderObjectGraphToNode(node, el, {
@@ -360,25 +548,67 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
     }
 
 
-    self.getAPI = function () {
-        return {
-            log: function (message) {
+    var consoles = {};
 
-                // TODO: Render message.
+    var publicAPI = {
+        renderMessageInto: function (panelEl, message) {
+            self.appendMessage(message, {
+                panelEl: panelEl,
+                clear: true,
+                view: "detail"
+            });
+        },
+        log: function (message) {
 
-                self.appendMessage(message);
-            },
-            send: function (message) {
+            // TODO: Render message.
 
-                if (!Array.isArray(message)) {
-                    message = [
-                        message
-                    ];
-                }
+            self.appendMessage(message);
+        },
+        send: function (message) {
 
-                receiverChannel.parseReceivedPostMessage(message);       
+            if (!Array.isArray(message)) {
+                message = [
+                    message
+                ];
             }
-        };
+
+            receiverChannel.parseReceivedPostMessage(message);       
+        },
+        clear: self.clear.bind(self),
+        on: self.on.bind(self),
+        off: self.off.bind(self),
+        consoleForId: function (id) {
+
+            var el = panelEl.querySelector('DIV[fireconsoleid="' + id + '"]');
+            if (!el) {
+                el = WINDOW.document.createElement('div');
+                el.setAttribute("fireconsoleid", id);
+                panelEl.appendChild(el);
+            }
+            if (!consoles[id]) {
+                consoles[id] = new Fireconsole();
+                consoles[id].setPanelElement(el);
+                consoles[id].onAny(function () {
+                    self.emit.apply(self, arguments);
+                });
+            }
+            return consoles[id];
+        },
+        destroyConsoleForId: function (id) {
+            if (!consoles[id]) {
+                return;
+            }
+            consoles[id].destroy();
+            delete consoles[id];
+            var el = panelEl.querySelector('DIV[fireconsoleid="' + id + '"]');
+            if (el) {
+                el.parentNode.removeChild(el);
+            }
+        }
+    };
+
+    self.getAPI = function () {
+        return publicAPI;
     }
 }
 Fireconsole.prototype = Object.create(EVENT_EMITTER.prototype);
@@ -390,32 +620,34 @@ const FC = WINDOW.FC = fireconsole.getAPI();
 
 exports.main = function (JSONREP, node) {
 
-    if (node.messages) {
-        node.messages.map(fireconsole.appendMessage);
-    }
-
-    if (node.load) {
-        node.load.map(function (uri) {
-            var script = WINDOW.document.createElement('script');
-            script.type = 'text/javascript';
-            script.src = uri;
-            WINDOW.document.getElementsByTagName('head')[0].appendChild(script);    
+    return Promise.all(Object.keys(node.plugins || []).map(function (key) {
+        var panelNode = {};
+        panelNode[key] = node[key];
+        return JSONREP.markupNode(panelNode).then(function () {
+            return null;
         });
-    }
+    })).then(function () {
 
-    return JSONREP.makeRep(
-        [
-            '<div class="console-container">',
-                '<div class="console-panel"></div>',
-            '</div>'
-        ].join("\n"),
-        {
+        if (node.messages) {
+            node.messages.map(fireconsole.appendMessage);
+        }
+
+        if (node.load) {
+            node.load.map(function (uri) {
+                var script = WINDOW.document.createElement('script');
+                script.type = 'text/javascript';
+                script.src = uri;
+                WINDOW.document.getElementsByTagName('head')[0].appendChild(script);    
+            });
+        }
+
+        return JSONREP.makeRep('<div></div>', {
             on: {
                 mount: function (el) {
 
-                    fireconsole.setPanelElement(el.querySelector("DIV.console-panel"));
+                    fireconsole.setPanelElement(el);
                 }
             }
-        }
-    );
+        });
+    });
 };
