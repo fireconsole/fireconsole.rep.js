@@ -12,7 +12,7 @@ console.log(">>>TEST_IGNORE_LINE:GET /dist/resources/insight.renderers.default/i
 
 describe("Suite", function() {
 
-    require('bash.origin.workspace').forPackage(__dirname + '/../..').LIB.BASH_ORIGIN_EXTRASS.runForTestHooks(before, after, {
+    require('bash.origin.workspace').forPackage(__dirname + '/../..').LIB.BASH_ORIGIN_EXPRESS.runForTestHooks(before, after, {
         "routes": {
             "^/": {
                 "@github.com~jsonrep~jsonrep#s1": {
@@ -129,15 +129,17 @@ describe("Suite", function() {
             'array(Hello World)',
             'map(Hello=>World)',
             'Hello World',
-            'TestArraymap(key1=>val1,key2=>array(array(v1,v2),v3))',
+            "TestArrayarray('key1'=>'val1','key2'=>array(array('v1','v2'),'v3'))",
             'Hello World',
             'Log message',
             'Info message',
             'Warn message',
             'Error message',
             'LabelMessage with label',
-            'TestArraymap(key1=>val1,key2=>array(array(v1,v2),v3))',
-            'map(data=>array(array(SELECT * FROM Foo,0.02,array(row1,row2)),array(SELECT * FROM Bar,0.04,array(row1,row2))),header=>array(SQL Statement,Time,Result),title=>2 SQL queries took 0.06 seconds)',
+            "TestArrayarray('key1'=>'val1','key2'=>array(array('v1','v2'),'v3'))",
+            '2 SQL queries took 0.06 seconds',
+            'Exception: Test Exception',
+            'Backtrace to here',
             'Group 1 (2)',
             'Hello World',
             'Group 1 (1)',
