@@ -12,7 +12,7 @@ console.log(">>>TEST_IGNORE_LINE:GET /dist/resources/insight.renderers.default/i
 
 describe("Suite", function() {
 
-    require('bash.origin.express').runForTestHooks(before, after, {
+    require('bash.origin.workspace').forPackage(__dirname + '/../..').LIB.BASH_ORIGIN_EXTRASS.runForTestHooks(before, after, {
         "routes": {
             "^/": {
                 "@github.com~jsonrep~jsonrep#s1": {
