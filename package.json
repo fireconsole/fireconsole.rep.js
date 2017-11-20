@@ -5,7 +5,7 @@
         "publish": "npm"
     },
     "dependencies": {
-        "insight.renderers.default": "^0.0.3"
+        "insight.renderers.default": "^0.0.5"
     },
     "devDependencies": {
         "bash.origin.workspace": "^0.2.23",
