@@ -1,5 +1,7 @@
 #!/usr/bin/env bash.origin.script
 
+export BO_SYSTEM_CACHE_DIR="$(node --eval 'process.stdout.write(require("bash.origin.workspace").node_modules);')"
+
 depend {
     "inception": {
         "@com.github/cadorn/Inception#s1": {
