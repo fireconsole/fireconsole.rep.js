@@ -42,7 +42,7 @@ if [ "$ARGS_1" == "publish" ]; then
 
 elif [ "$ARGS_1" == "build" ]; then
 
-    CALL_inception website run ${*:2} --build-only
+    CALL_inception website build ${*:2}
 
 elif [ "$ARGS_1" == "run" ]; then
 
