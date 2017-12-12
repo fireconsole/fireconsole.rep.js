@@ -5,7 +5,7 @@
         "publish": "npm"
     },
     "devDependencies": {
-        "bash.origin.workspace": "^0.2.74",
+        "bash.origin.workspace": "^0.2.75",
         "insight.renderers.default": "^0.0.5",
         "domplate": "^0.2.3",
         "insight-for-js": "^0.1.3",
