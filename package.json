@@ -15,6 +15,7 @@
     },
     "scripts": {
         "test": "bash.origin.test examples",
-        "build": "bash.origin.script ./workspace.sh build"
+        "build": "bash.origin.script ./workspace.sh build",
+        "publish-website": "bash.origin.script ./workspace.sh publish"
     }
 }
