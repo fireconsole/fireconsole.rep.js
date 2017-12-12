@@ -41,6 +41,6 @@ Requirements:
     rm -Rf dist/        # Optional to verify build
     nvm use 9
     npm install
-    npm run build
+    npm run build       # Append '--ignore-dirty' if you removed 'dist/'
     git diff            # Optional to verify build
         # No changes should be detected.
