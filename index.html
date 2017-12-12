@@ -63,7 +63,19 @@
     }
 }</div>
 <script src="https://jsonrep.github.io/jsonrep/dist/jsonrep.js"></script></div>
-<h1 id="undefinedprovenance">Provenance</h1>
+<h2 id="undefineddevelopment">Development</h2>
+<p>Requirements:</p>
+<ul>
+<li><a href="https://github.com/creationix/nvm">nvm</a> - Node Version Manager</li>
+</ul>
+<h3 id="undefinedbuild-from-source">Build from source</h3>
+<pre><code>rm -Rf <span class="hljs-keyword">dist/ </span>       <span class="hljs-comment"># Optional to verify build</span>
+nvm use <span class="hljs-number">9</span>
+npm <span class="hljs-keyword">install
+</span>npm run <span class="hljs-keyword">build </span>      <span class="hljs-comment"># Append '--ignore-dirty' if you removed 'dist/'</span>
+git <span class="hljs-keyword">diff </span>           <span class="hljs-comment"># Optional to verify build</span>
+    <span class="hljs-comment"># No changes should be detected.</span>
+</code></pre><h1 id="undefinedprovenance">Provenance</h1>
 <p>Original Source Logic under <a href="https://opensource.org/licenses/MPL-2.0">Mozilla Public License 2.0</a> by <a href="http://christophdorn.com">Christoph Dorn</a> since 2017.</p>
 <pre><code>Mozilla Public License 2.0
 
