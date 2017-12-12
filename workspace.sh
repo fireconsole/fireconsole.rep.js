@@ -40,6 +40,10 @@ if [ "$ARGS_1" == "publish" ]; then
     # TODO: Add option to track files and only publish if changed.
     CALL_inception website publish ${*:2}
 
+elif [ "$ARGS_1" == "build" ]; then
+
+    CALL_inception website build ${*:2}
+
 elif [ "$ARGS_1" == "run" ]; then
 
     CALL_inception website run ${*:2}

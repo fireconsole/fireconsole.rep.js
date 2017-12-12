@@ -30,6 +30,22 @@ HTML Page
 <script src="https://jsonrep.github.io/jsonrep/dist/jsonrep.js"></script>
 ```
 
+Development
+-----------
+
+Requirements:
+
+  * [nvm](https://github.com/creationix/nvm) - Node Version Manager
+
+### Build from source
+
+    rm -Rf dist/        # Optional to verify build
+    nvm use 9
+    npm install
+    npm run build       # Append '--ignore-dirty' if you removed 'dist/'
+    git diff            # Optional to verify build
+        # No changes should be detected.
+
 
 Provenance
 ==========
