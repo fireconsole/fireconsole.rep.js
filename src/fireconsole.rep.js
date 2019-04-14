@@ -3,53 +3,22 @@ const WINDOW = window;
 
 const EVENT_EMITTER = require("eventemitter2").EventEmitter2;
 const WILDFIRE = require("wildfire-for-js/lib/wildfire");
-const CONSOLE_WRAPPER = require("insight.renderers.default/lib/insight/wrappers/console");
-const VIEWER_WRAPPER = require("insight.renderers.default/lib/insight/wrappers/viewer");
+
+const REPS = require("insight.domplate.reps");
 const ENCODER = require("insight-for-js/lib/encoder/default");
 const DECODER = require("insight-for-js/lib/decoder/default");
-const DOMPLATE_UTIL = require("domplate/lib/util");
-const UTIL = {
-    copy: require("lodash/clone"),
-    merge: require("lodash/merge"),
-    importCssString:  function(cssText, doc, id) {
-        doc = doc || document;
-        
-        if (typeof id !== "undefined") {
-            if (doc.getElementById(id)) {
-                return;
-            }
-        }
-
-        if (doc.createStyleSheet) {
-            var sheet = doc.createStyleSheet();
-            sheet.cssText = cssText;
-        } else {
-            var style = doc.createElementNS ?
-                        doc.createElementNS("http://www.w3.org/1999/xhtml", "style") :
-                        doc.createElement("style");
-            if (typeof id !== "undefined") {
-                style.setAttribute("id", id);
-            }
-            style.appendChild(doc.createTextNode(cssText));
-
-            var head = doc.getElementsByTagName("head")[0] || doc.documentElement;
-            head.appendChild(style);
-        }
-    }
-};
 
 
-var templatePacks = {
-    "byid": {
-        "php": require("insight.renderers.default/lib/php/pack"),
-        "insight": require("insight.renderers.default/lib/insight/pack")
-    },
-    "list": []
-};
-templatePacks.list.push(templatePacks.byid["php"]);
-templatePacks.list.push(templatePacks.byid["insight"]);
+var repsBaseUrl = "/reps";
+if (typeof bundle !== "undefined") {
+    repsBaseUrl = bundle.module.filename.replace(/\/[^\/]+\/[^\/]+$/, '/dist/insight.domplate.reps');
+}
 
+var repLoader = new REPS.Loader({
+    repsBaseUrl: repsBaseUrl
+});
 
+/*
 var commonHelpers = {
     helpers: null,
     // NOTE: This should only be called once or with an ID to replace existing
@@ -145,10 +114,13 @@ var commonHelpers = {
     logger: window.console
 };
 commonHelpers.util.merge = UTIL.merge;
+*/
+
+var commonHelpers = {};
+
 
 
 var encoder = ENCODER.Encoder();
-
 
 
 var receiver = WILDFIRE.Receiver();
@@ -170,7 +142,7 @@ receiverChannel.addReceiver(receiver);
 
 
 
-function Fireconsole () {
+function FireConsole () {
     var self = this;
 
     var panelEl = null;
@@ -207,20 +179,23 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
 
 
 
-    function doSynchronizedappendMessageToNode (supervisor, panelEl, message) {
+    async function doSynchronizedappendMessageToNode (supervisor, panelEl, message) {
 
         if (supervisor.groupStack.length>0) {
             panelEl = supervisor.groupStack[supervisor.groupStack.length-1];
             if (!panelEl) {
                 throw new Error("panelEl is null!");
             }
-        } else {
+        }
+/*
+         else {
             var el = WINDOW.document.createElement("div");
             el.setAttribute("class", "message");        
     //        el.innerHTML = JSON.stringify(message, null, 4);
             panelEl.appendChild(el);        
                 
         }
+*/
 
         var options = message.options;
         var helpers = message.helpers;
@@ -236,10 +211,20 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
             panelEl.appendChild(domNode);
         }
 
+
+
         if (domNode) {
 //;debugger;            
-            message.template = helpers.getTemplateForNode(message.og.origin);
-            CONSOLE_WRAPPER.renderMessage(message, domNode, options, helpers);
+//            message.template = helpers.getTemplateForNode(message.og.origin);
+
+//            CONSOLE_WRAPPER.renderMessage(message, domNode, options, helpers);
+
+            var nodeTree = message.og.getOrigin();
+
+            nodeTree.meta = nodeTree.meta || {};
+            nodeTree.meta.wrapper = 'wrappers/console';
+
+            await repRenderer.renderNodeInto(nodeTree, domNode);
         }
 
         // post render
@@ -248,7 +233,7 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
         if (typeof meta["group.start"] !== "undefined") {
             
             // get reference to body of last added console row
-            var node = DOMPLATE_UTIL.getElementByClass(domNode, "body");
+            var node = repLoader.domplate.util.getElementByClass(domNode, "body");
 
             // insert further messages into group
             supervisor.groupStack.push(node);
@@ -279,7 +264,7 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
             
         }
         if (meta["expand"]) {
-            var node = DOMPLATE_UTIL.getElementByClass(domNode, "body");
+            var node = repLoader.domplate.util.getElementByClass(domNode, "body");
             if (
                 node.parentNode &&
                 node.parentNode.templateObject
@@ -290,7 +275,7 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
             }
         }
         if (meta["actions"] === false) {
-            var node = DOMPLATE_UTIL.getElementByClass(domNode, "actions");
+            var node = repLoader.domplate.util.getElementByClass(domNode, "actions");
             if (node) {
                 node.style.display = "none";
             }
@@ -349,11 +334,56 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
             !buffer.length ||
             !panelEl
         ) return;
-        buffer.map(self.appendMessage);
+        buffer.map(function (message) {
+            self.appendMessage(message);
+        });
         buffer = [];
     }
 
 	var renderSupervisor = new Supervisor();
+
+
+    var repRenderer = new REPS.Renderer({
+        loader: repLoader,
+        onEvent: function (name, args) {
+    
+console.log('repRenderer.onEvent()', name, args);
+
+            if (name === "click") {
+                //self.emit("clickRow", context);
+            } else
+            if (name === "expand") {
+                //self.emit("expandRow", context);
+            } else
+            if (name === "contract") {
+                //self.emit("contractRow", context);
+            } else
+            if (name === "inspectMessage") {
+                self.emit(name, {
+                    message: args[1].message
+                });
+            } else
+            if (name === "inspectFile") {
+/*
+                var context = UTIL.copy(args[1].args);
+                context.message = args[1].message;
+                self.emit(name, context);
+*/
+            } else
+            if (name === "inspectNode") {
+                self.emit(name, {
+                    message: {
+                        node: args[1].args.node,
+                        template: helpers.getTemplateForNode(args[1].args.node)
+                    }
+                });
+            } else {
+                console.error("No handler for: repRenderer.onEvent()", name, args);
+                throw new Error("NYI");
+            }
+        }
+    });
+    
 
     self.appendMessage = function (message, options) {
 
@@ -369,8 +399,7 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
             buffer.push(message);
             return;
         }
-
-
+/*
         var helpers = Object.create(commonHelpers);
         helpers.helpers = helpers;
         helpers.debug = false;
@@ -404,15 +433,17 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
                 throw new Error("NYI");
             }
         };
-
+*/
 
         if (options.view === "detail") {
-
+/*
             VIEWER_WRAPPER.renderMessage(message, panelEl, {
                 view: [
                     "detail"
                 ]
             }, helpers);
+*/
+            repRenderer.renderNodeInto(message, panelEl);
 
         } else {
 
@@ -516,7 +547,9 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
                     }
                     //;debugger;
 //getTemplateForNode
-                    var template = helpers.getTemplateModuleForNode(node);
+
+//console.log("RENDER:::", node, el);
+                    //var template = helpers.getTemplateModuleForNode(node);
 //                    var tpl = template.getTemplateDeclaration();
                     /*                    
                     var rawTpl = template.getTemplate(helpers).getRawTemplate();
@@ -524,13 +557,13 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
                         messageObject.postRender.keeptitle = true;
                     }
 */
-                    template.renderObjectGraphToNode(node, el, options, helpers);
+//                    template.renderObjectGraphToNode(node, el, options, helpers);
                 },
                 template: null,//template.getTemplate(helpers),
                 meta: meta,
                 og: og,
                 options: {},
-                helpers: helpers,
+//                helpers: helpers,
                 //domain: message.domain,
                 context: message.context
             };
@@ -586,7 +619,7 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
                 panelEl.appendChild(el);
             }
             if (!consoles[id]) {
-                consoles[id] = new Fireconsole();
+                consoles[id] = new FireConsole();
                 consoles[id].setPanelElement(el);
                 consoles[id].onAny(function () {
                     self.emit.apply(self, arguments);
@@ -611,10 +644,10 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
         return publicAPI;
     }
 }
-Fireconsole.prototype = Object.create(EVENT_EMITTER.prototype);
+FireConsole.prototype = Object.create(EVENT_EMITTER.prototype);
 
 
-const fireconsole = new Fireconsole();
+const fireconsole = new FireConsole();
 const FC = WINDOW.FC = fireconsole.getAPI();
 
 
@@ -629,7 +662,9 @@ exports.main = function (JSONREP, node) {
     })).then(function () {
 
         if (node.messages) {
-            node.messages.map(fireconsole.appendMessage);
+            node.messages.map(function (message) {
+                fireconsole.appendMessage(message);
+            });
         }
 
         if (node.load) {

@@ -40,7 +40,7 @@ Requirements:
 ### Build from source
 
     rm -Rf dist/        # Optional to verify build
-    nvm use 9
+    nvm use 10
     npm install
     npm run build       # Append '--ignore-dirty' if you removed 'dist/'
     git diff            # Optional to verify build

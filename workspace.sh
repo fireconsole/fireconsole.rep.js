@@ -1,10 +1,8 @@
 #!/usr/bin/env bash.origin.script
 
-export BO_SYSTEM_CACHE_DIR="$(node --eval 'process.stdout.write(require("bash.origin.workspace").node_modules);')"
-
 depend {
-    "inception": {
-        "@com.github/cadorn/Inception#s1": {
+    "component": {
+        "gi0.CADorn.org~component#s1": {
             "readme": "$__DIRNAME__/README.md",
             "variables": {
                 "PACKAGE_NAME": "fireconsole.rep.js",
@@ -27,9 +25,6 @@ depend {
                         "format": "pinf"
                     }
                 }
-            },
-            "files": {
-                "/dist/resources/insight.renderers.default/*": "$__DIRNAME__/node_modules/insight.renderers.default/resources"
             }
         }
     }
@@ -40,14 +35,14 @@ BO_parse_args "ARGS" "$@"
 if [ "$ARGS_1" == "publish" ]; then
 
     # TODO: Add option to track files and only publish if changed.
-    CALL_inception website publish ${*:2}
+    CALL_component publish ${*:2}
 
 elif [ "$ARGS_1" == "build" ]; then
 
-    CALL_inception website build ${*:2}
+    CALL_component build ${*:2}
 
 elif [ "$ARGS_1" == "run" ]; then
 
-    CALL_inception website run ${*:2}
+    CALL_component run ${*:2}
 
 fi

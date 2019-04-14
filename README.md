@@ -1,6 +1,6 @@
 
 
-| License | Source | &#8212;&raquo; | [Website](https://github.com/fireconsole/fireconsole.rep.js/tree/master/workspace.sh) | [npm](https://github.com/npm/npm) |
+| License | Source | &#8212;&raquo; | [Website](https://github.com/fireconsole/fireconsole.rep.js/tree/master/workspace.sh) | [npm](https://github.com/npm/cli) |
 | :---: | :---: | :---: | :---: | :---: |
 | [MPL](https://opensource.org/licenses/MPL-2.0) | [github.com/fireconsole/fireconsole.rep.js](https://github.com/fireconsole/fireconsole.rep.js) | [![CircleCI](https://circleci.com/gh/fireconsole/fireconsole.rep.js.svg?style=svg)](https://circleci.com/gh/fireconsole/fireconsole.rep.js) | [fireconsole.github.io/fireconsole.rep.js](https://fireconsole.github.io/fireconsole.rep.js) | [fireconsole.rep.js](https://www.npmjs.com/package/fireconsole.rep.js)
 
@@ -41,7 +41,7 @@ Requirements:
 ### Build from source
 
     rm -Rf dist/        # Optional to verify build
-    nvm use 9
+    nvm use 10
     npm install
     npm run build       # Append '--ignore-dirty' if you removed 'dist/'
     git diff            # Optional to verify build

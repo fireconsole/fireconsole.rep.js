@@ -8,11 +8,13 @@ module.config = {
 }
 */
 
-console.log(">>>TEST_IGNORE_LINE:GET /dist/resources/insight.renderers.default/images/<<<");
+console.log(">>>TEST_IGNORE_LINE:GET /dist/insight.domplate.reps/<<<");
+console.log(">>>TEST_IGNORE_LINE:GET /dist/<<<");
+console.log(">>>TEST_IGNORE_LINE:\[bash.origin.express\] Routing request<<<");
 
 describe("Suite", function() {
 
-    require('bash.origin.workspace').forPackage(__dirname + '/../..').LIB.BASH_ORIGIN_EXPRESS.runForTestHooks(before, after, {
+    require('bash.origin.lib').forPackage(__dirname).js.BASH_ORIGIN_EXPRESS.runForTestHooks(before, after, {
         "routes": {
             "^/": {
                 "@github.com~jsonrep~jsonrep#s1": {
@@ -33,7 +35,7 @@ describe("Suite", function() {
             },
             "/messages.js": {
                 "@it.pinf.org.browserify#s1": {
-                    "code": function /* CodeBlock */ () {
+                    "code": function CodeBlock /*CodeBlock*/ () {
 
                         FC.log([
                             "Hello World"
@@ -73,7 +75,6 @@ describe("Suite", function() {
                             FC.renderMessageInto(ensureInspectorPanel(), info.message);
                         });
 
-
                         var count = 0;
 
                         function prependLength (msg) {
@@ -109,8 +110,7 @@ describe("Suite", function() {
                         ]);
                     }
                 }
-            },
-            "/dist/resources/insight.renderers.default/*": __dirname + "/../../node_modules/insight.renderers.default/resources"
+            }
         }
     });
 
@@ -118,11 +118,11 @@ describe("Suite", function() {
 
         client.url('http://localhost:' + process.env.PORT + '/').pause(500);
 
+if (process.env.BO_TEST_FLAG_DEV) client.pause(60 * 60 * 24 * 1000);
+
         var selector = 'BODY[renderer="jsonrep"]';
 
         client.waitForElementPresent(selector, 3000);
-
-        if (process.env.BO_TEST_FLAG_DEV) client.pause(60 * 60 * 24 * 1000);
 
         client.expect.element(selector).text.to.contain([
             'Hello World!',
