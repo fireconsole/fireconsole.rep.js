@@ -25,6 +25,9 @@ depend {
                         "format": "pinf"
                     }
                 }
+            },
+            "files": {
+                "dist/insight.domplate.reps": "insight.domplate.reps/dist/reps"
             }
         }
     }

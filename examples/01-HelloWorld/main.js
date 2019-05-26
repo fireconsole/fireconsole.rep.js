@@ -10,7 +10,7 @@ module.config = {
 
 console.log(">>>TEST_IGNORE_LINE:GET /dist/insight.domplate.reps/<<<");
 console.log(">>>TEST_IGNORE_LINE:GET /dist/<<<");
-console.log(">>>TEST_IGNORE_LINE:\[bash.origin.express\] Routing request<<<");
+console.log(">>>TEST_IGNORE_LINE:Routing request /<<<");
 
 describe("Suite", function() {
 

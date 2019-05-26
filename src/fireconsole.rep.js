@@ -179,7 +179,7 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
 
 
 
-    async function doSynchronizedappendMessageToNode (supervisor, panelEl, message) {
+    function doSynchronizedappendMessageToNode (supervisor, panelEl, message) {
 
         if (supervisor.groupStack.length>0) {
             panelEl = supervisor.groupStack[supervisor.groupStack.length-1];
@@ -213,94 +213,104 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
 
 
 
-        if (domNode) {
-//;debugger;            
-//            message.template = helpers.getTemplateForNode(message.og.origin);
+        new Promise(function (resolve, reject) {
 
-//            CONSOLE_WRAPPER.renderMessage(message, domNode, options, helpers);
-
-            var nodeTree = message.og.getOrigin();
-
-            nodeTree.meta = nodeTree.meta || {};
-            nodeTree.meta.wrapper = 'wrappers/console';
-
-            await repRenderer.renderNodeInto(nodeTree, domNode);
-        }
-
-        // post render
-
-        // TODO: Relocate all this into domNode.templateObject.postRender();
-        if (typeof meta["group.start"] !== "undefined") {
-            
-            // get reference to body of last added console row
-            var node = repLoader.domplate.util.getElementByClass(domNode, "body");
-
-            // insert further messages into group
-            supervisor.groupStack.push(node);
-            // expand group if requested
-            if (
-                typeof meta["group.expand"] &&
-                meta["group.expand"] === meta["group"] &&
-                node.parentNode
-            ) {
-                node.parentNode.setAttribute("expanded", "true");
+            if (domNode) {
+    //;debugger;            
+    //            message.template = helpers.getTemplateForNode(message.og.origin);
+    
+    //            CONSOLE_WRAPPER.renderMessage(message, domNode, options, helpers);
+    
+                var nodeTree = message.og.getOrigin();
+    
+                nodeTree.meta = nodeTree.meta || {};
+                nodeTree.meta.wrapper = 'wrappers/console';
+    
+                repRenderer.renderNodeInto(nodeTree, domNode).then(resolve, reject);
+            } else {
+                resolve();
             }
-        }
-        if (typeof meta["group.end"] !== "undefined") {
+                
+        }).then(function () {
 
-            var count = meta["group.end"];
-            if (count === true) {
-                count = 1;
-            }
-            for( var i=0 ; i<count ; i++ ) {
-                var groupStartNode = supervisor.groupStack.pop();
-                if (groupStartNode.parentNode.templateObject) {
-                    groupStartNode.parentNode.templateObject.setCount(
-                        groupStartNode.parentNode,
-                        groupStartNode.children.length
-                    );
+
+            // post render
+
+            // TODO: Relocate all this into domNode.templateObject.postRender();
+            if (typeof meta["group.start"] !== "undefined") {
+                
+                // get reference to body of last added console row
+                var node = repLoader.domplate.util.getElementByClass(domNode, "body");
+
+                // insert further messages into group
+                supervisor.groupStack.push(node);
+                // expand group if requested
+                if (
+                    typeof meta["group.expand"] &&
+                    meta["group.expand"] === meta["group"] &&
+                    node.parentNode
+                ) {
+                    node.parentNode.setAttribute("expanded", "true");
                 }
             }
-            
-        }
-        if (meta["expand"]) {
-            var node = repLoader.domplate.util.getElementByClass(domNode, "body");
-            if (
-                node.parentNode &&
-                node.parentNode.templateObject
-            ) {
-                node.parentNode.templateObject.expandForMasterRow(node.parentNode, node);
+            if (typeof meta["group.end"] !== "undefined") {
+
+                var count = meta["group.end"];
+                if (count === true) {
+                    count = 1;
+                }
+                for( var i=0 ; i<count ; i++ ) {
+                    var groupStartNode = supervisor.groupStack.pop();
+                    if (groupStartNode.parentNode.templateObject) {
+                        groupStartNode.parentNode.templateObject.setCount(
+                            groupStartNode.parentNode,
+                            groupStartNode.children.length
+                        );
+                    }
+                }
+                
+            }
+            if (meta["expand"]) {
+                var node = repLoader.domplate.util.getElementByClass(domNode, "body");
+                if (
+                    node.parentNode &&
+                    node.parentNode.templateObject
+                ) {
+                    node.parentNode.templateObject.expandForMasterRow(node.parentNode, node);
+                } else {
+                    console.error("NYI - expand for message - in " + module.id);
+                }
+            }
+            if (meta["actions"] === false) {
+                var node = repLoader.domplate.util.getElementByClass(domNode, "actions");
+                if (node) {
+                    node.style.display = "none";
+                }
+            }
+
+            try {            
+                if (
+                    domNode &&
+                    domNode.children[0] &&
+                    domNode.children[0].templateObject &&
+                    domNode.children[0].templateObject.postRender
+                ) {
+                    domNode.children[0].templateObject.postRender(domNode.children[0]);
+                }
+            } catch(e) {
+                console.warn("Error during template postRender", e, e.stack);
+            }
+
+            if (supervisor._appendMessageToNode__queue.length > 0) {
+                doSynchronizedappendMessageToNode.apply(null, [
+                    supervisor
+                ].concat(supervisor._appendMessageToNode__queue.shift()));
             } else {
-                console.error("NYI - expand for message - in " + module.id);
+                supervisor._appendMessageToNode__queue = false;
             }
-        }
-        if (meta["actions"] === false) {
-            var node = repLoader.domplate.util.getElementByClass(domNode, "actions");
-            if (node) {
-                node.style.display = "none";
-            }
-        }
-
-        try {            
-            if (
-                domNode &&
-                domNode.children[0] &&
-                domNode.children[0].templateObject &&
-                domNode.children[0].templateObject.postRender
-            ) {
-                domNode.children[0].templateObject.postRender(domNode.children[0]);
-            }
-        } catch(e) {
-            console.warn("Error during template postRender", e, e.stack);
-        }
-
-        if (supervisor._appendMessageToNode__queue.length > 0) {
-            doSynchronizedappendMessageToNode.apply(null, [
-                supervisor
-            ].concat(supervisor._appendMessageToNode__queue.shift()));
-        } else {
-            supervisor._appendMessageToNode__queue = false;
-        }            
+        }).catch(function (err) {
+            throw err;
+        });
     }
 
 

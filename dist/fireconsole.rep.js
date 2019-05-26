@@ -21,6 +21,31 @@ var Renderer = exports.Renderer = _require_("./renderer").Renderer;
 
 function Domplate(exports) {
   exports.util = _require_("./util");
+
+  exports.loadStyle = function (uri, baseUrl) {
+    var WINDOW = window;
+
+    if (typeof baseUrl === 'undefined' && WINDOW && typeof WINDOW.pmodule !== "undefined" && !/^\//.test(uri)) {
+      uri = [WINDOW.pmodule.filename.replace(/\/([^\/]*)$/, ""), uri].join("/").replace(/\/\.?\//g, "/");
+    } else if (typeof baseUrl !== 'undefined') {
+      uri = [baseUrl, uri].join("/").replace(/\/\.?\//g, "/");
+    }
+
+    return new Promise(function (resolve, reject) {
+      console.log("[domplate] Load style:", uri);
+      var link = window.document.createElementNS ? window.document.createElementNS("http://www.w3.org/1999/xhtml", "link") : window.document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = uri;
+
+      link.onload = function () {
+        resolve();
+      };
+
+      var head = window.document.getElementsByTagName("head")[0] || window.document.documentElement;
+      head.appendChild(link);
+    });
+  };
+
   exports.EVAL = {
     compileMarkup: function compileMarkup(code, context) {
       return context.compiled(context);
@@ -672,7 +697,13 @@ function Domplate(exports) {
   }
 
   function creator(tag, cons) {
-    var fn = new Function("var tag = arguments.callee.tag;" + "var cons = arguments.callee.cons;" + "var newTag = new cons();" + "return newTag.merge(arguments, tag);");
+    var fn = function fn() {
+      var tag = arguments.callee.tag;
+      var cons = arguments.callee.cons;
+      var newTag = new cons();
+      return newTag.merge(arguments, tag);
+    };
+
     fn.tag = tag;
     fn.cons = cons;
     extend(fn, Renderer);
@@ -680,12 +711,14 @@ function Domplate(exports) {
   }
 
   function defineTags() {
-    for (var i = 0; i < arguments.length; ++i) {
-      var tagName = arguments[i];
-      var fn = new Function("var newTag = new this._domplate_.DomplateTag('" + tagName + "'); return newTag.merge(arguments);");
+    Array.from(arguments).forEach(function (tagName) {
       var fnName = tagName.toUpperCase();
-      exports.tags[fnName] = fn;
-    }
+
+      exports.tags[fnName] = function () {
+        var newTag = new this._domplate_.DomplateTag(tagName);
+        return newTag.merge(arguments);
+      };
+    });
   }
 
   defineTags("a", "button", "br", "canvas", "col", "colgroup", "div", "fieldset", "form", "h1", "h2", "h3", "hr", "img", "input", "label", "legend", "li", "ol", "optgroup", "option", "p", "pre", "select", "span", "strong", "table", "tbody", "td", "textarea", "tfoot", "th", "thead", "tr", "tt", "ul");
@@ -8319,10 +8352,6 @@ exports.CallbackStream = function() {
 
 function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
-function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { Promise.resolve(value).then(_next, _throw); } }
-
-function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
-
 var WINDOW = window;
 
 var EVENT_EMITTER = require("eventemitter2").EventEmitter2;
@@ -8386,120 +8415,95 @@ function FireConsole() {
     } else if (this._appendMessageToNode__queue !== false) this._appendMessageToNode__queue.push([domNode, message]);
   };
 
-  function doSynchronizedappendMessageToNode(_x, _x2, _x3) {
-    return _doSynchronizedappendMessageToNode.apply(this, arguments);
-  }
+  function doSynchronizedappendMessageToNode(supervisor, panelEl, message) {
+    if (supervisor.groupStack.length > 0) {
+      panelEl = supervisor.groupStack[supervisor.groupStack.length - 1];
 
-  function _doSynchronizedappendMessageToNode() {
-    _doSynchronizedappendMessageToNode = _asyncToGenerator(regeneratorRuntime.mark(function _callee(supervisor, panelEl, message) {
-      var options, helpers, meta, domNode, nodeTree, node, count, i, groupStartNode;
-      return regeneratorRuntime.wrap(function _callee$(_context) {
-        while (1) {
-          switch (_context.prev = _context.next) {
-            case 0:
-              if (!(supervisor.groupStack.length > 0)) {
-                _context.next = 4;
-                break;
-              }
+      if (!panelEl) {
+        throw new Error("panelEl is null!");
+      }
+    }
 
-              panelEl = supervisor.groupStack[supervisor.groupStack.length - 1];
+    var options = message.options;
+    var helpers = message.helpers;
+    var meta = message.meta;
+    var domNode = null;
 
-              if (panelEl) {
-                _context.next = 4;
-                break;
-              }
+    if (typeof meta["group.end"] === "undefined") {
+      domNode = WINDOW.document.createElement("div");
+      domNode.setAttribute("class", "message");
+      panelEl.appendChild(domNode);
+    }
 
-              throw new Error("panelEl is null!");
+    new Promise(function (resolve, reject) {
+      if (domNode) {
+        var nodeTree = message.og.getOrigin();
+        nodeTree.meta = nodeTree.meta || {};
+        nodeTree.meta.wrapper = 'wrappers/console';
+        repRenderer.renderNodeInto(nodeTree, domNode).then(resolve, reject);
+      } else {
+        resolve();
+      }
+    }).then(function () {
+      if (typeof meta["group.start"] !== "undefined") {
+        var node = repLoader.domplate.util.getElementByClass(domNode, "body");
+        supervisor.groupStack.push(node);
 
-            case 4:
-              options = message.options;
-              helpers = message.helpers;
-              meta = message.meta;
-              domNode = null;
+        if (_typeof(meta["group.expand"]) && meta["group.expand"] === meta["group"] && node.parentNode) {
+          node.parentNode.setAttribute("expanded", "true");
+        }
+      }
 
-              if (typeof meta["group.end"] === "undefined") {
-                domNode = WINDOW.document.createElement("div");
-                domNode.setAttribute("class", "message");
-                panelEl.appendChild(domNode);
-              }
+      if (typeof meta["group.end"] !== "undefined") {
+        var count = meta["group.end"];
 
-              if (!domNode) {
-                _context.next = 15;
-                break;
-              }
+        if (count === true) {
+          count = 1;
+        }
 
-              nodeTree = message.og.getOrigin();
-              nodeTree.meta = nodeTree.meta || {};
-              nodeTree.meta.wrapper = 'wrappers/console';
-              _context.next = 15;
-              return repRenderer.renderNodeInto(nodeTree, domNode);
+        for (var i = 0; i < count; i++) {
+          var groupStartNode = supervisor.groupStack.pop();
 
-            case 15:
-              if (typeof meta["group.start"] !== "undefined") {
-                node = repLoader.domplate.util.getElementByClass(domNode, "body");
-                supervisor.groupStack.push(node);
-
-                if (_typeof(meta["group.expand"]) && meta["group.expand"] === meta["group"] && node.parentNode) {
-                  node.parentNode.setAttribute("expanded", "true");
-                }
-              }
-
-              if (typeof meta["group.end"] !== "undefined") {
-                count = meta["group.end"];
-
-                if (count === true) {
-                  count = 1;
-                }
-
-                for (i = 0; i < count; i++) {
-                  groupStartNode = supervisor.groupStack.pop();
-
-                  if (groupStartNode.parentNode.templateObject) {
-                    groupStartNode.parentNode.templateObject.setCount(groupStartNode.parentNode, groupStartNode.children.length);
-                  }
-                }
-              }
-
-              if (meta["expand"]) {
-                node = repLoader.domplate.util.getElementByClass(domNode, "body");
-
-                if (node.parentNode && node.parentNode.templateObject) {
-                  node.parentNode.templateObject.expandForMasterRow(node.parentNode, node);
-                } else {
-                  console.error("NYI - expand for message - in " + module.id);
-                }
-              }
-
-              if (meta["actions"] === false) {
-                node = repLoader.domplate.util.getElementByClass(domNode, "actions");
-
-                if (node) {
-                  node.style.display = "none";
-                }
-              }
-
-              try {
-                if (domNode && domNode.children[0] && domNode.children[0].templateObject && domNode.children[0].templateObject.postRender) {
-                  domNode.children[0].templateObject.postRender(domNode.children[0]);
-                }
-              } catch (e) {
-                console.warn("Error during template postRender", e, e.stack);
-              }
-
-              if (supervisor._appendMessageToNode__queue.length > 0) {
-                doSynchronizedappendMessageToNode.apply(null, [supervisor].concat(supervisor._appendMessageToNode__queue.shift()));
-              } else {
-                supervisor._appendMessageToNode__queue = false;
-              }
-
-            case 21:
-            case "end":
-              return _context.stop();
+          if (groupStartNode.parentNode.templateObject) {
+            groupStartNode.parentNode.templateObject.setCount(groupStartNode.parentNode, groupStartNode.children.length);
           }
         }
-      }, _callee);
-    }));
-    return _doSynchronizedappendMessageToNode.apply(this, arguments);
+      }
+
+      if (meta["expand"]) {
+        var node = repLoader.domplate.util.getElementByClass(domNode, "body");
+
+        if (node.parentNode && node.parentNode.templateObject) {
+          node.parentNode.templateObject.expandForMasterRow(node.parentNode, node);
+        } else {
+          console.error("NYI - expand for message - in " + module.id);
+        }
+      }
+
+      if (meta["actions"] === false) {
+        var node = repLoader.domplate.util.getElementByClass(domNode, "actions");
+
+        if (node) {
+          node.style.display = "none";
+        }
+      }
+
+      try {
+        if (domNode && domNode.children[0] && domNode.children[0].templateObject && domNode.children[0].templateObject.postRender) {
+          domNode.children[0].templateObject.postRender(domNode.children[0]);
+        }
+      } catch (e) {
+        console.warn("Error during template postRender", e, e.stack);
+      }
+
+      if (supervisor._appendMessageToNode__queue.length > 0) {
+        doSynchronizedappendMessageToNode.apply(null, [supervisor].concat(supervisor._appendMessageToNode__queue.shift()));
+      } else {
+        supervisor._appendMessageToNode__queue = false;
+      }
+    }).catch(function (err) {
+      throw err;
+    });
   }
 
   self.getPanelEl = function () {
@@ -9703,8 +9707,9 @@ function Loader (options) {
                 // TODO: Optionally check against PINF sandbox directly to see if rep is loaded
                 //       instead of letting domplate load them.
                 var url = options.repsBaseUrl + "/" + repUri;
-
-                DOMPLATE.loadRep(url, { cssBaseUrl: options.repsBaseUrl.replace(/\/?$/, "/") + repUri.replace(/^([^\/]+\/).+$/, "$1") }, function (rep) {
+            
+                //DOMPLATE.loadRep(url, { cssBaseUrl: options.repsBaseUrl.replace(/\/?$/, "/") + repUri.replace(/^([^\/]+\/).+$/, "$1") }, function (rep) {
+                DOMPLATE.loadRep(url, { cssBaseUrl: options.repsBaseUrl.replace(/\/?$/, "/") }, function (rep) {
 
                     setTimeout(function () {
                         rep.__ensureCssInjected();

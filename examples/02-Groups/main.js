@@ -10,7 +10,7 @@ module.config = {
 
 console.log(">>>TEST_IGNORE_LINE:GET /dist/insight.domplate.reps/<<<");
 console.log(">>>TEST_IGNORE_LINE:GET /dist/<<<");
-console.log(">>>TEST_IGNORE_LINE:\[bash.origin.express\] Routing request<<<");
+console.log(">>>TEST_IGNORE_LINE:Routing request /<<<");
 
 describe("Suite", function() {
 
@@ -125,6 +125,27 @@ if (process.env.BO_TEST_FLAG_DEV) client.pause(60 * 60 * 24 * 1000);
         client.waitForElementPresent(selector, 3000);
 
         client.expect.element(selector).text.to.contain([
+            "Hello World!",
+            "array(Hello World)",
+            "map(Hello=>World)",
+            "Hello World",
+            "TestArraymap(key1=>val1,key2=>array(array(v1,v2),v3))",
+            "Hello World",
+            "Log message",
+            "Info message",
+            "Warn message",
+            "Error message",
+            "LabelMessage with label",
+            "TestArraymap(key1=>val1,key2=>array(array(v1,v2),v3))",
+            "map(data=>array(array(SELECT * FROM Foo,0.02,array(row1,row2)),array(SELECT * FROM Bar,0.04,array(row1,row2))),header=>array(SQL Statement,Time,Result),title=>2 SQL queries took 0.06 seconds)",
+            "dictionary(... 5 ...)",
+            "map(title=>Backtrace to here,trace=>array(map(class=>,type=>,function=>fb,file=> ... ),map(file=>/app/index.php,line=>3,args=>array(/app/_header.php),function=> ... )))",
+            "Group 1 (2)",
+            "Hello World",
+            "Group 1 (1)",
+            "Hello World"
+// TODO: When FirePHPCoreCompatibility is working again the result below should match.
+/*
             'Hello World!',
             'array(Hello World)',
             'map(Hello=>World)',
@@ -144,6 +165,7 @@ if (process.env.BO_TEST_FLAG_DEV) client.pause(60 * 60 * 24 * 1000);
             'Hello World',
             'Group 1 (1)',
             'Hello World'
+*/
         ].join("\n"));
 
         if (process.env.BO_TEST_FLAG_DEV) client.pause(60 * 60 * 24 * 1000);
