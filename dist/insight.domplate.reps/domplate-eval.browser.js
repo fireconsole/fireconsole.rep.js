@@ -28,11 +28,13 @@ var Renderer = exports.Renderer = require("./renderer").Renderer;
 function Domplate(exports) {
   exports.util = require("./util");
 
-  exports.loadStyle = function (uri) {
+  exports.loadStyle = function (uri, baseUrl) {
     var WINDOW = window;
 
-    if (WINDOW && typeof WINDOW.pmodule !== "undefined" && !/^\//.test(uri)) {
+    if (typeof baseUrl === 'undefined' && WINDOW && typeof WINDOW.pmodule !== "undefined" && !/^\//.test(uri)) {
       uri = [WINDOW.pmodule.filename.replace(/\/([^\/]*)$/, ""), uri].join("/").replace(/\/\.?\//g, "/");
+    } else if (typeof baseUrl !== 'undefined') {
+      uri = [baseUrl, uri].join("/").replace(/\/\.?\//g, "/");
     }
 
     return new Promise(function (resolve, reject) {

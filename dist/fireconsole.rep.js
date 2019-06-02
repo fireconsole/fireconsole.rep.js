@@ -8367,7 +8367,7 @@ var DECODER = require("insight-for-js/lib/decoder/default");
 var repsBaseUrl = "/reps";
 
 if (typeof bundle !== "undefined") {
-  repsBaseUrl = bundle.module.filename.replace(/\/[^\/]+\/[^\/]+$/, '/dist/insight.domplate.reps');
+  repsBaseUrl = bundle.module.filename.replace(/(^|\/)[^\/]+\/[^\/]+$/, '/dist/insight.domplate.reps');
 }
 
 var repLoader = new REPS.Loader({

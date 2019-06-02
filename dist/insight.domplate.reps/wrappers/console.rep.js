@@ -355,12 +355,7 @@ return (function (__code__, __context__, __in__, __out__) {  with (this) {  with
   rep.__ensureCssInjected = function () {
     if (injectedCss) return;
     injectedCss = true;
-
-    if (options.cssBaseUrl) {
-      domplate.loadStyle(options.cssBaseUrl + "wrappers/console.rep.css");
-    } else {
-      domplate.loadStyle("wrappers/console.rep.css");
-    }
+    domplate.loadStyle("wrappers/console.rep.css", options.cssBaseUrl || undefined);
   };
 
   Object.keys(rep).forEach(function (tagName) {
