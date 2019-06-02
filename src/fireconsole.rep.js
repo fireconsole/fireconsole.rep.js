@@ -13,7 +13,7 @@ const DECODER = require("insight-for-js/lib/decoder/default");
 
 var repsBaseUrl = "/reps";
 if (typeof bundle !== "undefined") {
-    repsBaseUrl = bundle.module.filename.replace(/(^|\/)[^\/]+\/[^\/]+$/, '/dist/insight.domplate.reps');
+    repsBaseUrl = bundle.module.filename.replace(/(^|\/)[^\/]+\/[^\/]+$/, '$1dist/insight.domplate.reps');
 }
 
 //console.log("repsBaseUrl", repsBaseUrl);
