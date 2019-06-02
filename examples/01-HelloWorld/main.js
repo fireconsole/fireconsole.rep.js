@@ -8,6 +8,8 @@ module.config = {
 }
 */
 
+const PATH = require("path");
+
 console.log(">>>TEST_IGNORE_LINE:GET /dist/insight.domplate.reps/<<<");
 console.log(">>>TEST_IGNORE_LINE:GET /dist/<<<");
 console.log(">>>TEST_IGNORE_LINE:Routing request /<<<");
@@ -18,6 +20,8 @@ describe("Suite", function() {
         "routes": {
             "^/": {
                 "@github.com~jsonrep~jsonrep#s1": {
+//                    "dist": PATH.join(__dirname, ".dist", "index.html"),
+//                    "prime": true,
                     "page": {
                         "@fireconsole": {
                             "messages": [

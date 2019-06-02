@@ -9,10 +9,15 @@ const ENCODER = require("insight-for-js/lib/encoder/default");
 const DECODER = require("insight-for-js/lib/decoder/default");
 
 
+//console.log("bundle", bundle);
+
 var repsBaseUrl = "/reps";
 if (typeof bundle !== "undefined") {
-    repsBaseUrl = bundle.module.filename.replace(/\/[^\/]+\/[^\/]+$/, '/dist/insight.domplate.reps');
+    repsBaseUrl = bundle.module.filename.replace(/(^|\/)[^\/]+\/[^\/]+$/, '/dist/insight.domplate.reps');
 }
+
+//console.log("repsBaseUrl", repsBaseUrl);
+
 
 var repLoader = new REPS.Loader({
     repsBaseUrl: repsBaseUrl
