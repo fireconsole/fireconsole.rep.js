@@ -19,7 +19,8 @@ depend {
             "routes": {
                 "/dist/fireconsole.rep.js": {
                     "@github.com~jsonrep~jsonrep#s1": {
-                        "dist": "$__DIRNAME__/dist/fireconsole.rep.js",
+                        "externalizeCss": true,
+                        "dist": "$__DIRNAME__/dist",
                         "prime": true,
                         "page": {
                             "@fireconsole": {
