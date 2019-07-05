@@ -20,7 +20,7 @@ depend {
                 "/dist/fireconsole.rep.js": {
                     "@github.com~jsonrep~jsonrep#s1": {
                         "externalizeCss": true,
-                        "dist": "$__DIRNAME__/dist",
+                        "dist": "$__DIRNAME__/dist/fireconsole.rep.js",
                         "prime": true,
                         "page": {
                             "@fireconsole": {
