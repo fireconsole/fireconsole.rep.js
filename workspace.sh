@@ -18,16 +18,18 @@ depend {
             },
             "routes": {
                 "/dist/fireconsole.rep.js": {
-                    "@it.pinf.org.browserify#s1": {
-                        "src": "$__DIRNAME__/src/fireconsole.rep.js",
+                    "@github.com~jsonrep~jsonrep#s1": {
                         "dist": "$__DIRNAME__/dist/fireconsole.rep.js",
                         "prime": true,
-                        "format": "pinf"
+                        "page": {
+                            "@fireconsole": {
+                            }
+                        },
+                        "reps": {
+                            "fireconsole": "$__DIRNAME__/src/fireconsole.rep.js"
+                        }
                     }
                 }
-            },
-            "files": {
-                "dist/insight.domplate.reps": "insight.domplate.reps/dist/reps"
             }
         }
     }

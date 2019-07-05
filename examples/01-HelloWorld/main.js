@@ -20,8 +20,8 @@ describe("Suite", function() {
         "routes": {
             "^/": {
                 "@github.com~jsonrep~jsonrep#s1": {
-//                    "dist": PATH.join(__dirname, ".dist", "index.html"),
-//                    "prime": true,
+                    "dist": PATH.join(__dirname, ".dist", "index.html"),
+                    "prime": true,
                     "page": {
                         "@fireconsole": {
                             "messages": [
