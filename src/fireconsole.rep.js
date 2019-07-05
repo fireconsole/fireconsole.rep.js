@@ -109,9 +109,7 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
 */
 
         var options = message.options;
-        //var helpers = message.helpers;
         var meta = message.meta;
-;debugger;
         var domNode = null;
 
         if (typeof meta["group.end"] === "undefined") {

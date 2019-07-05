@@ -1,5 +1,5 @@
 
-const VERBOSE = true;
+const VERBOSE = false;
 
 const ENCODER = require("insight-for-js/lib/encoder/default");
 
