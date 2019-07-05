@@ -1,143 +1,44 @@
 
 const WINDOW = window;
 
+const LODASH_MERGE = require("lodash/merge");
 const EVENT_EMITTER = require("eventemitter2").EventEmitter2;
-const WILDFIRE = require("wildfire-for-js/lib/wildfire");
+
+
+// ##################################################
+// # Insight Reps
+// ##################################################
 
 const REPS = require("insight.domplate.reps");
-const ENCODER = require("insight-for-js/lib/encoder/default");
-const DECODER = require("insight-for-js/lib/decoder/default");
 
-
-//console.log("bundle", bundle);
-
-var repsBaseUrl = "/reps";
+let repsBaseUrl = "/reps";
 if (typeof bundle !== "undefined") {
     repsBaseUrl = bundle.module.filename.replace(/(^|\/)[^\/]+\/[^\/]+$/, '$1dist/insight.domplate.reps');
 }
 
-//console.log("repsBaseUrl", repsBaseUrl);
-
-
-var repLoader = new REPS.Loader({
+const repLoader = new REPS.Loader({
     repsBaseUrl: repsBaseUrl
 });
 
-/*
-var commonHelpers = {
-    helpers: null,
-    // NOTE: This should only be called once or with an ID to replace existing
-    importCssString: function(id, css, document) {
-        UTIL.importCssString([
-            '[renderer="jsonrep"] {',
-            '   font-family: Lucida Grande, Tahoma, sans-serif;',
-            '   font-size: 11px;',
-            '}',
-            css
-        ].join("\n"), document, "devcomp-insight-css-" + id);
-    },
-    util: UTIL.copy(DOMPLATE_UTIL),
-    getTemplateForId: function(id) {
-        throw new Error("NYI - commonHelpers.getTemplateForid (in " + module.id + ")");
-    },
-    getTemplateModuleForNode: function (node) {
 
-//console.log("getTemplateModuleForNode", node);
-//;debugger;
-        var found = null;
+// ##################################################
+// # Message Encoding/Decoding
+// ##################################################
 
-        var og = node.og || node.getObjectGraph(),
-            ogNode = og.origin,
-            meta = og.meta;
+const WILDFIRE = require("wildfire-for-js/lib/wildfire");
+const BROWSER_API_ENCODER = require("./encoders/BrowserApi-0.1");
+const FIREBUG_CONSOLE_DECODER = require("./decoders/FirebugConsole-0.1");
 
-        // Match message-based renderers
-        if (node === ogNode && meta && meta.renderer) {
-            if (!node.meta) node.meta = {};
-            var pack = false;
-            var id = "http://registry.pinf.org/cadorn.org/renderers/packages/insight/0";
-            if (meta.renderer.substring(0, id.length+1) === id + ":") {
-                if (node === node.getObjectGraph().getOrigin()) {
-                    node.meta.renderer = meta.renderer.substring(id.length+1);
-                }
-                pack = "insight";
-            }
-            if (pack) {
-                found = templatePacks.byid[pack].getTemplateForNode(node);
-            } else {
-                console.warn("Unknown renderer: " + meta.renderer);
-            }
-        }
+const encoder = new BROWSER_API_ENCODER.Encoder();
+const decoder = new FIREBUG_CONSOLE_DECODER.Decoder();
 
-        // Match message-based language primitives
-        if (!found && meta && meta["lang.id"]) {
-            if (meta["lang.id"] == "registry.pinf.org/cadorn.org/github/renderers/packages/php/master") {
-                found = templatePacks.byid["php"].getTemplateForNode(node);
-                if (!found) {
-                    // lookup in default language pack
-                    found = templatePacks.byid["insight"].getTemplateForNode(node);
-                }
-            } else {
-                throw new Error("Unknown language ID: " + meta["lang.id"]);
-            }
-        } else
-        if (!found) {
-//console.log("getTemplateModuleForNode() - !found");
-            for (var i=templatePacks.list.length-1 ; i>=0 ; i--) {
-                if (
-                    typeof templatePacks.list[i].getTemplateForNode == "function" &&
-                    (found = templatePacks.list[i].getTemplateForNode(node))
-                ) {
-                    break;
-                }
-            }
-        }
-        if (!found) {
-            console.error("ERROR: Template for node '" + node.type + "' not found! (in " + module.id + ")", node);
-            return false;
-        }
-        return found;
-    },
-    getTemplateForNode: function (node) {
-        if (!node) {
-            throw new Error("No node specified!");
-        }
-//console.log("getTemplateForNode", node);
-
-        var template = commonHelpers.getTemplateModuleForNode(node);
-
-//        "lang.id":"registry.pinf.org/cadorn.org/github/renderers/packages/php/master"
-
-//        var template = INSIGHT_RENDERERS.getTemplateForNode(node).getTemplate(this.helpers);
-        return template.getTemplate(this.helpers);
-    },
-    getResourceBaseUrl: function (module) {
-
-        // TODO: Optionally specify different URL
-        return "dist/resources/insight.renderers.default/";
-    },
-    document: window.document,
-    logger: window.console
-};
-commonHelpers.util.merge = UTIL.merge;
-*/
-
-var commonHelpers = {};
-
-
-
-var encoder = ENCODER.Encoder();
-
-
-var receiver = WILDFIRE.Receiver();
+const receiver = WILDFIRE.Receiver();
 receiver.setId("http://meta.firephp.org/Wildfire/Structure/FirePHP/FirebugConsole/0.1");
 receiver.addListener({
     onMessageReceived: function (request, message) {
-
-
-//console.log("MESSAGE:::", message);
-
-        fireconsole.appendMessage(message);
-
+        exports.fireconsole.appendMessage(
+            decoder.formatMessage(message)
+        );
     }
 });
 
@@ -147,8 +48,13 @@ receiverChannel.addReceiver(receiver);
 
 
 
+
 function FireConsole () {
     var self = this;
+
+    self.parseReceivedPostMessage = function () {
+        return receiverChannel.parseReceivedPostMessage.apply(receiverChannel, arguments);
+    }
 
     var panelEl = null;
     self.setPanelElement = function (el) {
@@ -203,9 +109,9 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
 */
 
         var options = message.options;
-        var helpers = message.helpers;
+        //var helpers = message.helpers;
         var meta = message.meta;
-
+;debugger;
         var domNode = null;
 
         if (typeof meta["group.end"] === "undefined") {
@@ -226,7 +132,7 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
     
     //            CONSOLE_WRAPPER.renderMessage(message, domNode, options, helpers);
     
-                var nodeTree = message.og.getOrigin();
+                var nodeTree = message.node;//og.getOrigin();
     
                 nodeTree.meta = nodeTree.meta || {};
                 nodeTree.meta.wrapper = 'wrappers/console';
@@ -401,129 +307,30 @@ console.log('repRenderer.onEvent()', name, args);
     
 
     self.appendMessage = function (message, options) {
-
         options = options || {};
 
         if (options.clear) {
             self.clear(options);
         }
 
-        var panelEl = options.panelEl || self.getPanelEl();
-        
+        const panelEl = options.panelEl || self.getPanelEl();
         if (!panelEl) {
             buffer.push(message);
             return;
         }
-/*
-        var helpers = Object.create(commonHelpers);
-        helpers.helpers = helpers;
-        helpers.debug = false;
-        helpers.dispatchEvent = function (name, args) {
-
-            if (name === "expand") {
-                //self.emit("expandRow", context);
-            } else
-            if (name === "contract") {
-                //self.emit("contractRow", context);
-            } else
-            if (name === "inspectMessage") {
-                self.emit(name, {
-                    message: args[1].message
-                });
-            } else
-            if (name === "inspectFile") {
-                var context = UTIL.copy(args[1].args);
-                context.message = args[1].message;
-                self.emit(name, context);
-            } else
-            if (name === "inspectNode") {
-                self.emit(name, {
-                    message: {
-                        node: args[1].args.node,
-                        template: helpers.getTemplateForNode(args[1].args.node)
-                    }
-                });
-            } else {
-                console.error("helpers.dispatchEvent()", name, args);
-                throw new Error("NYI");
-            }
-        };
-*/
 
         if (options.view === "detail") {
-/*
-            VIEWER_WRAPPER.renderMessage(message, panelEl, {
-                view: [
-                    "detail"
-                ]
-            }, helpers);
-*/
             repRenderer.renderNodeInto(message, panelEl);
-
         } else {
 
-            var og = null;
-            var meta = null;
-    
-            if (
-                typeof message === "object" &&
-                typeof message.og !== "undefined"
-            ) {
-                meta = message.meta;
-                og = message.og;
-            } else {
-                if (
-                    typeof message === "object" &&
-                    typeof message.getMeta === "function"
-                ) {
-                    var obj = DECODER.generateFromMessage(message, DECODER.EXTENDED);
-                    meta = obj.getMeta() || {};
-                    og = obj;
-                } else {
-                    var obj = null;                
-                    if (
-                        typeof message === "object" &&
-                        message.sender &&
-                        message.receiver &&
-                        typeof message.meta === "string" &&
-                        typeof message.data === "string"
-                    ) {
-                        obj = DECODER.generateFromMessage({
-                            meta: JSON.parse(message.meta || "{}") || {},
-                            data: message.data
-                        }, DECODER.EXTENDED);
-                    } else {
-                        obj = DECODER.generateFromMessage({
-                            meta: meta || {},
-                            data: encoder.encode(message, {}, {})
-                        }, DECODER.EXTENDED);
-                    }
-                    meta = obj.getMeta() || {};
-                    og = obj;
-                }
+            if (message["#"] !== "InsightTree") {
+                message = encoder.formatMessage(message, options);
             }
-
-            //console.log("META", meta);
-
-            var node = og.getOrigin();
-
-            //console.log("NODE", node);
-            /*
-                    var template = PHP_RENDERERS.getTemplateForNode(node);
-
-                    if (!template) {
-                        template = INSIGHT_RENDERERS.getTemplateForNode(node);
-                    }
-                    
-            console.log("template!!!", template);
-            if (!template) {
-                console.log("NO template for message", message, node)
-            }
-            */
 
             var msg = {
                 render: function (el, view, messageObject) {
 
+throw new Error("Render!!");                    
                     // Nothing to render for groups. Child nodes have already been inserted.
                     // TODO: Maybe do not insert child nodes until expanding?
                     if (typeof meta["group.start"] !== "undefined" && meta["group.start"]) {
@@ -538,20 +345,19 @@ console.log('repRenderer.onEvent()', name, args);
                         options.view = [ options.view ];
                     }
 
-                    // HACK
-                    var _og = og;
                     if (
-                        _og.origin.type === "reference" ||
-                        _og.origin.meta.renderer === "structures/table" ||
-                        _og.origin.meta.renderer === "structures/trace"
+                        node.type === "reference" ||
+                        node.meta.renderer === "structures/table" ||
+                        node.meta.renderer === "structures/trace"
                     ) {
                         var tpl = null;
-                        if (_og.origin.type === "reference") {
-                            tpl = commonHelpers.getTemplateModuleForNode(_og.instances[0]);                        
+                        if (node.type === "reference") {
+throw new Error("Get REFERENCE");                            
+                            tpl = commonHelpers.getTemplateModuleForNode(node.instances[0]);                        
                         } else
                         if (
-                            _og.origin.meta.renderer === "structures/table" ||
-                            _og.origin.meta.renderer === "structures/trace"                                
+                            node.meta.renderer === "structures/table" ||
+                            node.meta.renderer === "structures/trace"                                
                         ) {
                             tpl = commonHelpers.getTemplateModuleForNode(_og.origin);                        
                         }                        
@@ -574,86 +380,52 @@ console.log('repRenderer.onEvent()', name, args);
 */
 //                    template.renderObjectGraphToNode(node, el, options, helpers);
                 },
-                template: null,//template.getTemplate(helpers),
-                meta: meta,
-                og: og,
+                meta: message.meta,
+                node: message,
                 options: {},
 //                helpers: helpers,
                 //domain: message.domain,
-                context: message.context
+                context: message.context || undefined
             };
 
             renderSupervisor.appendMessageToNode(panelEl, msg);
         }
-
-/*
-        template.renderObjectGraphToNode(node, el, {
-            view: [
-                "summary"
-            ]
-        }, helpers);
-*/
     }
 
 
     var consoles = {};
 
-    var publicAPI = {
-        renderMessageInto: function (panelEl, message) {
-            self.appendMessage(message, {
-                panelEl: panelEl,
-                clear: true,
-                view: "detail"
-            });
-        },
-        log: function (message) {
+    self.consoleForId = function (id) {
 
-            // TODO: Render message.
-
-            self.appendMessage(message);
-        },
-        send: function (message) {
-
-            if (!Array.isArray(message)) {
-                message = [
-                    message
-                ];
-            }
-
-            receiverChannel.parseReceivedPostMessage(message);       
-        },
-        clear: self.clear.bind(self),
-        on: self.on.bind(self),
-        off: self.off.bind(self),
-        consoleForId: function (id) {
-
-            var el = panelEl.querySelector('DIV[fireconsoleid="' + id + '"]');
-            if (!el) {
-                el = WINDOW.document.createElement('div');
-                el.setAttribute("fireconsoleid", id);
-                panelEl.appendChild(el);
-            }
-            if (!consoles[id]) {
-                consoles[id] = new FireConsole();
-                consoles[id].setPanelElement(el);
-                consoles[id].onAny(function () {
-                    self.emit.apply(self, arguments);
-                });
-            }
-            return consoles[id];
-        },
-        destroyConsoleForId: function (id) {
-            if (!consoles[id]) {
-                return;
-            }
-            consoles[id].destroy();
-            delete consoles[id];
-            var el = panelEl.querySelector('DIV[fireconsoleid="' + id + '"]');
-            if (el) {
-                el.parentNode.removeChild(el);
-            }
+        var el = panelEl.querySelector('DIV[fireconsoleid="' + id + '"]');
+        if (!el) {
+            el = WINDOW.document.createElement('div');
+            el.setAttribute("fireconsoleid", id);
+            panelEl.appendChild(el);
         }
-    };
+        if (!consoles[id]) {
+            consoles[id] = new FireConsole();
+            consoles[id].setPanelElement(el);
+            consoles[id].onAny(function () {
+                self.emit.apply(self, arguments);
+            });
+        }
+        return consoles[id];
+    }
+
+    self.destroyConsoleForId = function (id) {
+        if (!consoles[id]) {
+            return;
+        }
+        consoles[id].destroy();
+        delete consoles[id];
+        var el = panelEl.querySelector('DIV[fireconsoleid="' + id + '"]');
+        if (el) {
+            el.parentNode.removeChild(el);
+        }
+    }
+
+    const publicAPI = new PublicAPI(self);
 
     self.getAPI = function () {
         return publicAPI;
@@ -662,9 +434,88 @@ console.log('repRenderer.onEvent()', name, args);
 FireConsole.prototype = Object.create(EVENT_EMITTER.prototype);
 
 
-const fireconsole = new FireConsole();
-const FC = WINDOW.FC = fireconsole.getAPI();
+class PublicAPI {
 
+    constructor (fireconsole, options) {
+        this.fireconsole = fireconsole;
+        this.options = options || {};
+    }
+
+    clear () {
+        return this.fireconsole.clear.apply(this.fireconsole, arguments);
+    }
+    on () {
+        return this.fireconsole.on.apply(this.fireconsole, arguments);
+    }
+    off () {
+        return this.fireconsole.off.apply(this.fireconsole, arguments);
+    }
+
+    _logObjectWithPriority (priority, message) {
+        this.fireconsole.appendMessage(message, LODASH_MERGE({}, this.options, {
+            priority: priority
+        }));
+    }
+
+    renderMessageInto (panelEl, message) {
+        this.fireconsole.appendMessage(message, {
+            panelEl: panelEl,
+            clear: true,
+            view: "detail"
+        });
+    }
+
+    label (label) {
+        return new PublicAPI(this.fireconsole, {
+            label: label
+        });
+    }
+
+    log (message) {
+        this._logObjectWithPriority("log", message);
+    }
+    info (message) {
+        this._logObjectWithPriority("info", message);
+    }
+    warn (message) {
+        this._logObjectWithPriority("warn", message);
+    }
+    error (message) {
+        this._logObjectWithPriority("error", message);
+    }
+    send (message) {
+        if (
+            message.sender &&
+            message.receiver
+        ) {
+            if (message.receiver === "http://meta.firephp.org/Wildfire/Structure/FirePHP/FirebugConsole/0.1") {
+                this.fireconsole.appendMessage(
+                    decoder.formatMessage(message)
+                );
+            } else {
+                throw new Error(`Receiver for ID '${message.receiver}' not implemented!`);
+            }
+            return;
+        }
+        if (!Array.isArray(message)) {
+            message = [
+                message
+            ];
+        }
+        this.fireconsole.parseReceivedPostMessage(message);
+    }
+};
+
+
+// ##################################################
+// # Main
+// ##################################################
+
+exports.fireconsole = new FireConsole();
+
+if (typeof WINDOW.FC === "undefined") {
+    WINDOW.FC = exports.fireconsole.getAPI();
+}
 
 exports.main = function (JSONREP, node) {
 
@@ -678,7 +529,7 @@ exports.main = function (JSONREP, node) {
 
         if (node.messages) {
             node.messages.map(function (message) {
-                fireconsole.appendMessage(message);
+                exports.fireconsole.appendMessage(message);
             });
         }
 
@@ -692,10 +543,17 @@ exports.main = function (JSONREP, node) {
         }
 
         return JSONREP.makeRep('<div></div>', {
+            css: (css () >>>
+
+                DIV {
+                    font-family: Lucida Grande, Tahoma, sans-serif;
+                    font-size: 11px;
+                }
+
+            <<<),
             on: {
                 mount: function (el) {
-
-                    fireconsole.setPanelElement(el);
+                    exports.fireconsole.setPanelElement(el);
                 }
             }
         });

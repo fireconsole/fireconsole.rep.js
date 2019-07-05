@@ -37,27 +37,6 @@ describe("Suite", function() {
                 "@it.pinf.org.browserify#s1": {
                     "code": function CodeBlock /*CodeBlock*/ () {
 
-                        FC.log([
-                            "Hello World"
-                        ]);
-                        FC.log({
-                            "Hello": "World"
-                        });
-
-                        FC.log({
-                            "sender": "http://meta.firephp.org/Wildfire/Plugin/FirePHP/Library-FirePHPCore/0.3",
-                            "receiver": "http://meta.firephp.org/Wildfire/Structure/FirePHP/FirebugConsole/0.1",
-                            "meta": "{\"msg.preprocessor\":\"FirePHPCoreCompatibility\",\"target\":\"console\",\"lang.id\":\"registry.pinf.org/cadorn.org/github/renderers/packages/php/master\",\"priority\":\"log\",\"file\":\"/dl/source/github.com~firephp~firephp-for-firefox-devtools/tests/03-Messages-FirePHPCore/index.php\",\"line\":11}",
-                            "data": "\"Hello World\""
-                        });
-
-                        FC.log({
-                            "sender": "http://meta.firephp.org/Wildfire/Plugin/FirePHP/Library-FirePHPCore/0.3",
-                            "receiver": "http://meta.firephp.org/Wildfire/Structure/FirePHP/FirebugConsole/0.1",
-                            "meta": "{\"msg.preprocessor\":\"FirePHPCoreCompatibility\",\"target\":\"console\",\"lang.id\":\"registry.pinf.org/cadorn.org/github/renderers/packages/php/master\",\"priority\":\"log\",\"label\":\"TestArray\",\"file\":\"/dl/source/github.com~firephp~firephp-for-firefox-devtools/tests/03-Messages-FirePHPCore/index.php\",\"line\":21}",
-                            "data": "{\"key1\":\"val1\",\"key2\":[[\"v1\",\"v2\"],\"v3\"]}"
-                        });
-
 
                         function ensureInspectorPanel () {
                             var el = document.querySelector('BODY > DIV.viewer');
@@ -75,8 +54,46 @@ describe("Suite", function() {
                             FC.renderMessageInto(ensureInspectorPanel(), info.message);
                         });
 
-                        var count = 0;
 
+                        FC.log("Hello World");
+                        FC.log([
+                            "Hello World"
+                        ]);
+                        FC.log({
+                            "Hello": "World"
+                        });
+                        FC.info("Hello World");
+                        FC.warn("Hello World");
+                        FC.error("Hello World");
+                        FC.label("Label").log([
+                            "Message with label"
+                        ]);
+                        FC.label("Test Array").log({
+                            "key1": "val1",
+                            "key2": [
+                                [
+                                    "v1",
+                                    "v2"
+                                ],
+                                "v3"
+                            ]
+                        });
+
+                        FC.send({
+                            "sender": "http://meta.firephp.org/Wildfire/Plugin/FirePHP/Library-FirePHPCore/0.3",
+                            "receiver": "http://meta.firephp.org/Wildfire/Structure/FirePHP/FirebugConsole/0.1",
+                            "meta": "{\"msg.preprocessor\":\"FirePHPCoreCompatibility\",\"target\":\"console\",\"lang.id\":\"registry.pinf.org/cadorn.org/github/renderers/packages/php/master\",\"priority\":\"log\",\"file\":\"/dl/source/github.com~firephp~firephp-for-firefox-devtools/tests/03-Messages-FirePHPCore/index.php\",\"line\":11}",
+                            "data": "\"Hello World (via send)\""
+                        });
+
+                        FC.send({
+                            "sender": "http://meta.firephp.org/Wildfire/Plugin/FirePHP/Library-FirePHPCore/0.3",
+                            "receiver": "http://meta.firephp.org/Wildfire/Structure/FirePHP/FirebugConsole/0.1",
+                            "meta": "{\"msg.preprocessor\":\"FirePHPCoreCompatibility\",\"target\":\"console\",\"lang.id\":\"registry.pinf.org/cadorn.org/github/renderers/packages/php/master\",\"priority\":\"log\",\"label\":\"TestArray\",\"file\":\"/dl/source/github.com~firephp~firephp-for-firefox-devtools/tests/03-Messages-FirePHPCore/index.php\",\"line\":21}",
+                            "data": "{\"key1\":\"val1\",\"key2\":[[\"v1\",\"v2\"],\"v3\"]}"
+                        });
+
+                        var count = 0;
                         function prependLength (msg) {
                             count += 1;
                             return msg.length + "|" + msg;
@@ -93,8 +110,8 @@ describe("Suite", function() {
 
                             'X-Wf-1-1-1-8: ' + prependLength('[{"Type":"TABLE","File":"/tests/03-Messages-FirePHPCore/index.php","Line":26},["2 SQL queries took 0.06 seconds",[["SQL Statement","Time","Result"],["SELECT * FROM Foo","0.02",["row1","row2"]],["SELECT * FROM Bar","0.04",["row1","row2"]]]]]') + '|',
                             'X-Wf-1-1-1-9: ' + prependLength('[{"Type":"EXCEPTION","File":"\/app\/_header.php","Line":17},{"Class":"Exception","Message":"Test Exception","File":"\/app\/_header.php","Line":17,"Type":"throw","Trace":[{"file":"\/app\/_header.php","line":20,"function":"test","args":[{"Hello":"World"}]},{"file":"\/app\/index.php","line":3,"args":["\/app\/_header.php"],"function":"require"}]}]') + '|',
-                            'X-Wf-1-1-1-10: ' + prependLength('[{"Type":"TRACE","File":"\/app\/_header.php","Line":25},{"Class":"","Type":"","Function":"fb","Message":"Backtrace to here","File":"\/app\/_header.php","Line":25,"Args":["Backtrace to here","TRACE"],"Trace":[{"file":"\/app\/index.php","line":3,"args":["\/app\/_header.php"],"function":"require"}]}]') + '|',                            
-                            
+                            'X-Wf-1-1-1-10: ' + prependLength('[{"Type":"TRACE","File":"\/app\/_header.php","Line":25},{"Class":"","Type":"","Function":"fb","Message":"Backtrace to here","File":"\/app\/_header.php","Line":25,"Args":["Backtrace to here","TRACE"],"Trace":[{"file":"\/app\/index.php","line":3,"args":["\/app\/_header.php"],"function":"require"}]}]') + '|',
+
                             'X-Wf-1-1-1-11: ' + prependLength('[{"Type":"GROUP_START","Label":"Group 1","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"28"},null]') + '|',
                             'X-Wf-1-1-1-12: ' + prependLength('[{"Type":"LOG","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"29"},"Hello World"]') + '|',
                             'X-Wf-1-1-1-13: ' + prependLength('[{"Type":"GROUP_START","Label":"Group 1","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"30"},null]') + '|',
@@ -122,51 +139,33 @@ if (process.env.BO_TEST_FLAG_DEV) client.pause(60 * 60 * 24 * 1000);
 
         var selector = 'BODY[renderer="jsonrep"]';
 
-        client.waitForElementPresent(selector, 3000);
+        client.waitForElementPresent(selector, 5000);
 
-        client.expect.element(selector).text.to.contain([
-            "Hello World!",
-            "array(Hello World)",
-            "map(Hello=>World)",
-            "Hello World",
-            "TestArraymap(key1=>val1,key2=>array(array(v1,v2),v3))",
-            "Hello World",
-            "Log message",
-            "Info message",
-            "Warn message",
-            "Error message",
-            "LabelMessage with label",
-            "TestArraymap(key1=>val1,key2=>array(array(v1,v2),v3))",
-            "map(data=>array(array(SELECT * FROM Foo,0.02,array(row1,row2)),array(SELECT * FROM Bar,0.04,array(row1,row2))),header=>array(SQL Statement,Time,Result),title=>2 SQL queries took 0.06 seconds)",
-            "dictionary(... 5 ...)",
-            "map(title=>Backtrace to here,trace=>array(map(class=>,type=>,function=>fb,file=> ... ),map(file=>/app/index.php,line=>3,args=>array(/app/_header.php),function=> ... )))",
-            "Group 1 (2)",
-            "Hello World",
-            "Group 1 (1)",
-            "Hello World"
-// TODO: When FirePHPCoreCompatibility is working again the result below should match.
-/*
-            'Hello World!',
-            'array(Hello World)',
-            'map(Hello=>World)',
-            'Hello World',
-            "TestArrayarray('key1'=>'val1','key2'=>array(array('v1','v2'),'v3'))",
-            'Hello World',
-            'Log message',
-            'Info message',
-            'Warn message',
-            'Error message',
-            'LabelMessage with label',
-            "TestArrayarray('key1'=>'val1','key2'=>array(array('v1','v2'),'v3'))",
-            '2 SQL queries took 0.06 seconds',
-            'Exception: Test Exception',
-            'Backtrace to here',
-            'Group 1 (2)',
-            'Hello World',
-            'Group 1 (1)',
-            'Hello World'
-*/
-        ].join("\n"));
+        client.expect.element(selector).text.to.contain(`Hello World!
+Hello World
+array(Hello World)
+map(Hello=>World)
+Hello World
+Hello World
+Hello World
+Labelarray(Message with label)
+Test Arraymap(key1=>val1,key2=>array(array(v1,v2),v3))
+Hello World (via send)
+TestArraymap('key1'=>'val1','key2'=>array(array('v1','v2'),'v3'))
+Hello World
+Log message
+Info message
+Warn message
+Error message
+LabelMessage with label
+TestArraymap('key1'=>'val1','key2'=>array(array('v1','v2'),'v3'))
+2 SQL queries took 0.06 seconds
+Test Exception
+Backtrace to here
+GROUP 1 (2)
+Hello World
+GROUP 1 (1)
+Hello World`);
 
         if (process.env.BO_TEST_FLAG_DEV) client.pause(60 * 60 * 24 * 1000);
 

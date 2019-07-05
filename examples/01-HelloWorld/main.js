@@ -41,6 +41,7 @@ describe("Suite", function() {
                 "@it.pinf.org.browserify#s1": {
                     "code": function CodeBlock /*CodeBlock*/ () {
 
+                        FC.log("Hello World");
                         FC.log([
                             "Hello World"
                         ]);
@@ -61,12 +62,13 @@ if (process.env.BO_TEST_FLAG_DEV) client.pause(60 * 60 * 24 * 1000);
 
         var selector = 'BODY[renderer="jsonrep"]';
 
-        client.waitForElementPresent(selector, 3000);
+        client.waitForElementPresent(selector, 5000);
         
         client.expect.element(selector).text.to.contain([
             'Hello World!',
+            'Hello World',
             'array(Hello World)',
-            'map(Hello=>World)'
+            'map(Hello=>World)',
         ].join("\n"));
 
         if (process.env.BO_TEST_FLAG_DEV) client.pause(60 * 60 * 24 * 1000);
