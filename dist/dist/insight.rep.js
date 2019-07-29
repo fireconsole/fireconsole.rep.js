@@ -32,7 +32,6 @@ function Domplate(exports) {
     }
 
     return new Promise(function (resolve, reject) {
-      console.log("[domplate] Load style:", uri);
       var link = window.document.createElementNS ? window.document.createElementNS("http://www.w3.org/1999/xhtml", "link") : window.document.createElement("link");
       link.rel = "stylesheet";
       link.href = uri;
@@ -960,7 +959,7 @@ exports.makeMarkupRuntime = function (EVAL, context) {
     try {
       if (!iter || !iter.next) {
         console.error("Cannot iterate loop", iter, _typeof(iter), outputs, fn);
-        throw new Exception("Cannot iterate loop as iter.next() method is not defined");
+        throw new Error("Cannot iterate loop as iter.next() method is not defined");
       }
 
       while (1) {
@@ -2519,7 +2518,6 @@ exports.generateFromMessage = function(message, format)
         throw new Error("NYI");
 
     if(meta["msg.preprocessor"] && meta["msg.preprocessor"]=="FirePHPCoreCompatibility") {
-;debugger;
         var parts = convertFirePHPCoreData(meta, data);
         if (typeof message.setMeta == "function")
             message.setMeta(JSON.encode(parts[0]));
@@ -3177,7 +3175,7 @@ Encoder.prototype.encodeObject = function(meta, object, objectDepth, arrayDepth,
     }
     
     var self = this,
-        ret = {"type": "dictionary", "dictionary": {}};
+        ret = {"type": "dictionary", "value": {}};
 
     // HACK: This should be done via an option
     // FirePHPCore compatibility: we have an object if a class name is present
@@ -3222,13 +3220,13 @@ Encoder.prototype.encodeObject = function(meta, object, objectDepth, arrayDepth,
                 if(parts.length==2 && parts[1]=="static") {
                     val["lang.static"] = 1;
                 }
-                ret["dictionary"][name] = val;
+                ret["value"][name] = val;
             } else {
-                ret["dictionary"][item[0]] = self.encodeVariable(meta, item[1], objectDepth + 1, 1, overallDepth + 1);
+                ret["value"][item[0]] = self.encodeVariable(meta, item[1], objectDepth + 1, 1, overallDepth + 1);
             }
         } catch(e) {
             console.warn(e);
-            ret["dictionary"]["__oops__"] = {"notice": "Error encoding member (" + e + ")"};
+            ret["value"]["__oops__"] = {"notice": "Error encoding member (" + e + ")"};
         }
     });
 
@@ -4455,6 +4453,22 @@ function Renderer (options) {
                 }
             }
         }
+
+        self.forNode = function (rootNode) {
+            const context = Object.create(self);
+
+            context.getInstanceNode = function (node) {
+                if (
+                    !rootNode.instances ||
+                    !rootNode.instances[node.value]
+                ) {
+                    console.error("node", node);
+                    throw new Error("Object instance for reference '" + node.value + "' not found 'instances'!");
+                }
+                return rootNode.instances[node.value];
+            }
+            return context;
+        }
     }
 
     var context = new InsightDomplateContext();
@@ -4464,7 +4478,7 @@ function Renderer (options) {
         // TODO: Optionally pre-fill with already loaded reps.
         // TODO: Move node traversal into helper module.
         var loadTypes = {
-            "default/unknown": true
+//            "default/unknown": true
         };
         function traverse (node) {
 
@@ -4561,6 +4575,12 @@ function Renderer (options) {
                 }
                 if (node.meta.wrapper) {
                     loadTypes[node.meta.wrapper] = true;
+
+                    if (node.meta.wrapper === "wrappers/request") {
+                        if (node.value.title) {
+                            traverse(node.value.title);
+                        }
+                    }
                 }
             }
 
@@ -4587,6 +4607,12 @@ function Renderer (options) {
                 if (type === "reference") {
                     if (node.value.instance) {
                         traverse(node.value.instance);
+                    } else
+                    if (
+                        node.instances &&
+                        typeof node.value === "number"
+                    ) {
+                        traverse(node.instances[node.value]);
                     } else
                     if (typeof node.getInstance === 'function') {
                         traverse(node.getInstance());
@@ -4662,7 +4688,7 @@ function Renderer (options) {
                 }
 
                 wrapperRep[options.tagName || 'tag'].replace({
-                    context: context,
+                    context: context.forNode(node),
                     node: node
                 }, el);
 
@@ -4672,7 +4698,7 @@ function Renderer (options) {
             var rep = context.repForNode(node);
 
             rep[options.tagName || 'tag'].replace({
-                context: context,
+                context: context.forNode(node),
                 node: node
             }, el);
         });

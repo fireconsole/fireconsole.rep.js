@@ -53,7 +53,7 @@ DIV.structures-trace[__dbid="900280dccb9220e71264efb50a24debff867f7f3"] TABLE TB
   border-bottom: 0px;
   border-right: 0px;
 }
-DIV.structures-trace[__dbid="900280dccb9220e71264efb50a24debff867f7f3"] TABLE TBODY TR TD.cell-line:hover, DIV.structures-trace TABLE TBODY TR TD.cell-file:hover {
+DIV.structures-trace[__dbid="900280dccb9220e71264efb50a24debff867f7f3"] TABLE TBODY TR TD.cell-line[clickable="true"]:hover, DIV.structures-trace TABLE TBODY TR TD.cell-file[clickable="true"]:hover {
     background-color: #ffc73d;
     cursor: pointer;    
 }

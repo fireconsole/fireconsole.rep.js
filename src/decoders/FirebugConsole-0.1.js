@@ -73,6 +73,8 @@ class Decoder {
                     node.value.body = dataNode.origin.value.map(function (row) {
                         return row.value;
                     });
+
+                    node.instances = dataNode.instances;
                 } else
                 /*
                     meta: {
@@ -131,9 +133,7 @@ class Decoder {
                             value: data['protected:message']
                         }
                     };
-
                     node.value.stack = data["private:trace"].map(function (frame) {
-
                         dataNode = encoder.encode(frame.args || [], {
                             "lang": "php"
                         }, {
@@ -150,6 +150,25 @@ class Decoder {
                             })
                         };
                     });
+                } else
+                /*
+                    data: { "__className": "Foo" }
+                */
+                if (
+                    data &&
+                    typeof data === "object" &&
+                    typeof data.__className === "string"
+                ) {
+                    dataNode = encoder.encode(data, {
+                        "lang": "php"
+                    }, {
+                        "jsonEncode": false
+                    });
+
+                    node.meta = dataNode.origin.meta;
+                    node.type = dataNode.origin.type;
+                    node.value = dataNode.origin.value;
+                    node.instances = dataNode.instances;
                 } else {
 
                     dataNode = encoder.encode(data, {
@@ -160,6 +179,7 @@ class Decoder {
 
                     node.meta = dataNode.origin.meta;
                     node.value = dataNode.origin.value;
+                    node.instances = dataNode.instances;
                 }
             }
 

@@ -32,7 +32,6 @@ function Domplate(exports) {
     }
 
     return new Promise(function (resolve, reject) {
-      console.log("[domplate] Load style:", uri);
       var link = window.document.createElementNS ? window.document.createElementNS("http://www.w3.org/1999/xhtml", "link") : window.document.createElement("link");
       link.rel = "stylesheet";
       link.href = uri;
@@ -960,7 +959,7 @@ exports.makeMarkupRuntime = function (EVAL, context) {
     try {
       if (!iter || !iter.next) {
         console.error("Cannot iterate loop", iter, _typeof(iter), outputs, fn);
-        throw new Exception("Cannot iterate loop as iter.next() method is not defined");
+        throw new Error("Cannot iterate loop as iter.next() method is not defined");
       }
 
       while (1) {
@@ -5902,8 +5901,16 @@ receiver.addListener({
     exports.fireconsole.appendMessage(decoder.formatMessage(message));
   }
 });
+var receiverDump = WILDFIRE.Receiver();
+receiverDump.setId("http://meta.firephp.org/Wildfire/Structure/FirePHP/Dump/0.1");
+receiverDump.addListener({
+  onMessageReceived: function onMessageReceived(request, message) {
+    exports.fireconsole.appendMessage(decoder.formatMessage(message));
+  }
+});
 var receiverChannel = WILDFIRE.PostMessageChannel();
 receiverChannel.addReceiver(receiver);
+receiverChannel.addReceiver(receiverDump);
 
 function FireConsole() {
   var self = this;
@@ -6065,21 +6072,21 @@ function FireConsole() {
   }
 
   var renderSupervisor = new Supervisor();
-  var repRenderer = new REPS.Renderer({
+  var repRenderer = self.repRenderer = new REPS.Renderer({
     loader: repLoader,
     onEvent: function onEvent(name, args) {
       console.log('repRenderer.onEvent()', name, args);
 
       if (name === "click") {} else if (name === "expand") {} else if (name === "contract") {} else if (name === "inspectMessage") {
         self.emit(name, {
-          message: args[1].message
+          node: args[1].args.node
         });
-      } else if (name === "inspectFile") {} else if (name === "inspectNode") {
+      } else if (name === "inspectFile") {
+        console.log("INSPECT FILE", args);
+      } else if (name === "inspectNode") {
+        args[1].args.node['#'] = "InsightTree";
         self.emit(name, {
-          message: {
-            node: args[1].args.node,
-            template: helpers.getTemplateForNode(args[1].args.node)
-          }
+          node: args[1].args.node
         });
       } else {
         console.error("No handler for: repRenderer.onEvent()", name, args);
@@ -6204,6 +6211,7 @@ var PublicAPI = function () {
 
     this.fireconsole = fireconsole;
     this.options = options || {};
+    this.FireConsole = FireConsole;
   }
 
   _createClass(PublicAPI, [{
@@ -6270,18 +6278,21 @@ var PublicAPI = function () {
       if (message.sender && message.receiver) {
         if (message.receiver === "http://meta.firephp.org/Wildfire/Structure/FirePHP/FirebugConsole/0.1") {
           this.fireconsole.appendMessage(decoder.formatMessage(message));
+        } else if (message.receiver === "http://meta.firephp.org/Wildfire/Structure/FirePHP/Dump/0.1") {
+          this.fireconsole.appendMessage(decoder.formatMessage(message));
+        } else if (message.receiver === "https://gi0.FireConsole.org/rep.js/InsightTree/0.1") {
+          message.data["#"] = "InsightTree";
+          this.fireconsole.appendMessage(message.data);
         } else {
           throw new Error("Receiver for ID '".concat(message.receiver, "' not implemented!"));
         }
+      } else {
+        if (!Array.isArray(message)) {
+          message = [message];
+        }
 
-        return;
+        this.fireconsole.parseReceivedPostMessage(message);
       }
-
-      if (!Array.isArray(message)) {
-        message = [message];
-      }
-
-      this.fireconsole.parseReceivedPostMessage(message);
     }
   }]);
 
@@ -6321,7 +6332,7 @@ exports.main = function (JSONREP, node) {
     return JSONREP.makeRep('<div></div>', {
       css: {
         ".@": "github.com~0ink~codeblock/codeblock:Codeblock",
-        "_code": "{\"_cssid\":\"d2115af4f3c012143aaa17abfb8028212708a6bc\",\"repUri\":\"fireconsole\"}",
+        "_code": "{\"_cssid\":\"3ec12b5678e224c6d23261a8fd83618fce968e3f\",\"repUri\":\"fireconsole\"}",
         "_format": "json",
         "_args": [],
         "_compiled": false
@@ -6337,13 +6348,15 @@ exports.main = function (JSONREP, node) {
 },{"./decoders/FirebugConsole-0.1":100,"./encoders/BrowserApi-0.1":101,"eventemitter2":2,"insight.domplate.reps":126,"lodash/merge":96,"wildfire-for-js/lib/wildfire":113}],100:[function(require,module,exports){
 "use strict";
 
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
 
 function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
 
-var VERBOSE = false;
+var VERBOSE = true;
 
 var ENCODER = require("insight-for-js/lib/encoder/default");
 
@@ -6399,6 +6412,7 @@ var Decoder = function () {
             node.value.body = dataNode.origin.value.map(function (row) {
               return row.value;
             });
+            node.instances = dataNode.instances;
           } else if (meta["renderer"] === "http://registry.pinf.org/cadorn.org/renderers/packages/insight/0:structures/trace") {
               node.meta = {
                 "lang": "default",
@@ -6453,15 +6467,26 @@ var Decoder = function () {
                     })
                   };
                 });
-              } else {
-                dataNode = encoder.encode(data, {
-                  "lang": "php"
-                }, {
-                  "jsonEncode": false
-                });
-                node.meta = dataNode.origin.meta;
-                node.value = dataNode.origin.value;
-              }
+              } else if (data && _typeof(data) === "object" && typeof data.__className === "string") {
+                  dataNode = encoder.encode(data, {
+                    "lang": "php"
+                  }, {
+                    "jsonEncode": false
+                  });
+                  node.meta = dataNode.origin.meta;
+                  node.type = dataNode.origin.type;
+                  node.value = dataNode.origin.value;
+                  node.instances = dataNode.instances;
+                } else {
+                  dataNode = encoder.encode(data, {
+                    "lang": "php"
+                  }, {
+                    "jsonEncode": false
+                  });
+                  node.meta = dataNode.origin.meta;
+                  node.value = dataNode.origin.value;
+                  node.instances = dataNode.instances;
+                }
         }
 
         ['priority', 'label', 'file', 'line', 'target', 'group', 'group.start', 'group.end', 'group.title', 'group.expand'].forEach(function (name) {
@@ -11995,7 +12020,7 @@ Encoder.prototype.encodeObject = function(meta, object, objectDepth, arrayDepth,
     }
     
     var self = this,
-        ret = {"type": "dictionary", "dictionary": {}};
+        ret = {"type": "dictionary", "value": {}};
 
     // HACK: This should be done via an option
     // FirePHPCore compatibility: we have an object if a class name is present
@@ -12040,13 +12065,13 @@ Encoder.prototype.encodeObject = function(meta, object, objectDepth, arrayDepth,
                 if(parts.length==2 && parts[1]=="static") {
                     val["lang.static"] = 1;
                 }
-                ret["dictionary"][name] = val;
+                ret["value"][name] = val;
             } else {
-                ret["dictionary"][item[0]] = self.encodeVariable(meta, item[1], objectDepth + 1, 1, overallDepth + 1);
+                ret["value"][item[0]] = self.encodeVariable(meta, item[1], objectDepth + 1, 1, overallDepth + 1);
             }
         } catch(e) {
             console.warn(e);
-            ret["dictionary"]["__oops__"] = {"notice": "Error encoding member (" + e + ")"};
+            ret["value"]["__oops__"] = {"notice": "Error encoding member (" + e + ")"};
         }
     });
 
@@ -12089,6 +12114,22 @@ function Renderer (options) {
                 }
             }
         }
+
+        self.forNode = function (rootNode) {
+            const context = Object.create(self);
+
+            context.getInstanceNode = function (node) {
+                if (
+                    !rootNode.instances ||
+                    !rootNode.instances[node.value]
+                ) {
+                    console.error("node", node);
+                    throw new Error("Object instance for reference '" + node.value + "' not found 'instances'!");
+                }
+                return rootNode.instances[node.value];
+            }
+            return context;
+        }
     }
 
     var context = new InsightDomplateContext();
@@ -12098,7 +12139,7 @@ function Renderer (options) {
         // TODO: Optionally pre-fill with already loaded reps.
         // TODO: Move node traversal into helper module.
         var loadTypes = {
-            "default/unknown": true
+//            "default/unknown": true
         };
         function traverse (node) {
 
@@ -12195,6 +12236,12 @@ function Renderer (options) {
                 }
                 if (node.meta.wrapper) {
                     loadTypes[node.meta.wrapper] = true;
+
+                    if (node.meta.wrapper === "wrappers/request") {
+                        if (node.value.title) {
+                            traverse(node.value.title);
+                        }
+                    }
                 }
             }
 
@@ -12221,6 +12268,12 @@ function Renderer (options) {
                 if (type === "reference") {
                     if (node.value.instance) {
                         traverse(node.value.instance);
+                    } else
+                    if (
+                        node.instances &&
+                        typeof node.value === "number"
+                    ) {
+                        traverse(node.instances[node.value]);
                     } else
                     if (typeof node.getInstance === 'function') {
                         traverse(node.getInstance());
@@ -12296,7 +12349,7 @@ function Renderer (options) {
                 }
 
                 wrapperRep[options.tagName || 'tag'].replace({
-                    context: context,
+                    context: context.forNode(node),
                     node: node
                 }, el);
 
@@ -12306,7 +12359,7 @@ function Renderer (options) {
             var rep = context.repForNode(node);
 
             rep[options.tagName || 'tag'].replace({
-                context: context,
+                context: context.forNode(node),
                 node: node
             }, el);
         });

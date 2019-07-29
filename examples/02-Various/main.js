@@ -48,10 +48,13 @@ describe("Suite", function() {
                             return el;
                         }
                         FC.on("inspectMessage", function (info) {
-                            FC.renderMessageInto(ensureInspectorPanel(), info.message);
+                            FC.renderMessageInto(ensureInspectorPanel(), info.node);
                         });
                         FC.on("inspectNode", function (info) {
-                            FC.renderMessageInto(ensureInspectorPanel(), info.message);
+                            FC.renderMessageInto(ensureInspectorPanel(), info.node);
+                        });
+                        FC.on("inspectFile", function (info) {
+                            console.log("Inspect File:", info);
                         });
 
 
@@ -118,6 +121,8 @@ describe("Suite", function() {
                             'X-Wf-1-1-1-14: ' + prependLength('[{"Type":"LOG","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"31"},"Hello World"]') + '|',
                             'X-Wf-1-1-1-15: ' + prependLength('[{"Type":"GROUP_END","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"32"},null]') + '|',
                             'X-Wf-1-1-1-16: ' + prependLength('[{"Type":"GROUP_END","File":"/tests/03-Messages-FirePHPCore/index.php","Line":"33"},null]') + '|',
+
+                            'X-Wf-1-2-1-17: ' + prependLength('{"RequestHeaders":{"key1":"val1","key2":[["v1","v2"],"v3"]}}') + '|',
 
                             'X-Wf-1-Structure-1: http://meta.firephp.org/Wildfire/Structure/FirePHP/FirebugConsole/0.1',
                             'X-Wf-Protocol-1: http://meta.wildfirehq.org/Protocol/JsonStream/0.2',

@@ -42,8 +42,19 @@ receiver.addListener({
     }
 });
 
+const receiverDump = WILDFIRE.Receiver();
+receiverDump.setId("http://meta.firephp.org/Wildfire/Structure/FirePHP/Dump/0.1");
+receiverDump.addListener({
+    onMessageReceived: function (request, message) {
+        exports.fireconsole.appendMessage(
+            decoder.formatMessage(message)
+        );
+    }
+});
+
 var receiverChannel = WILDFIRE.PostMessageChannel();
 receiverChannel.addReceiver(receiver);
+receiverChannel.addReceiver(receiverDump);
 
 
 
@@ -125,7 +136,6 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
         new Promise(function (resolve, reject) {
 
             if (domNode) {
-    //;debugger;            
     //            message.template = helpers.getTemplateForNode(message.og.origin);
     
     //            CONSOLE_WRAPPER.renderMessage(message, domNode, options, helpers);
@@ -262,7 +272,7 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
 	var renderSupervisor = new Supervisor();
 
 
-    var repRenderer = new REPS.Renderer({
+    var repRenderer = self.repRenderer = new REPS.Renderer({
         loader: repLoader,
         onEvent: function (name, args) {
     
@@ -279,10 +289,13 @@ console.log('repRenderer.onEvent()', name, args);
             } else
             if (name === "inspectMessage") {
                 self.emit(name, {
-                    message: args[1].message
+                    node: args[1].args.node
                 });
             } else
             if (name === "inspectFile") {
+
+console.log("INSPECT FILE", args);
+
 /*
                 var context = UTIL.copy(args[1].args);
                 context.message = args[1].message;
@@ -290,11 +303,9 @@ console.log('repRenderer.onEvent()', name, args);
 */
             } else
             if (name === "inspectNode") {
+                args[1].args.node['#'] = "InsightTree";
                 self.emit(name, {
-                    message: {
-                        node: args[1].args.node,
-                        template: helpers.getTemplateForNode(args[1].args.node)
-                    }
+                    node: args[1].args.node
                 });
             } else {
                 console.error("No handler for: repRenderer.onEvent()", name, args);
@@ -364,7 +375,6 @@ throw new Error("Get REFERENCE");
                             messageObject.postRender.keeptitle = true;
                         }
                     }
-                    //;debugger;
 //getTemplateForNode
 
 //console.log("RENDER:::", node, el);
@@ -437,6 +447,8 @@ class PublicAPI {
     constructor (fireconsole, options) {
         this.fireconsole = fireconsole;
         this.options = options || {};
+
+        this.FireConsole = FireConsole;
     }
 
     clear () {
@@ -490,17 +502,26 @@ class PublicAPI {
                 this.fireconsole.appendMessage(
                     decoder.formatMessage(message)
                 );
+            } else
+            if (message.receiver === "http://meta.firephp.org/Wildfire/Structure/FirePHP/Dump/0.1") {
+                this.fireconsole.appendMessage(
+                    decoder.formatMessage(message)
+                );
+            } else
+            if (message.receiver === "https://gi0.FireConsole.org/rep.js/InsightTree/0.1") {
+                message.data["#"] = "InsightTree";
+                this.fireconsole.appendMessage(message.data);
             } else {
                 throw new Error(`Receiver for ID '${message.receiver}' not implemented!`);
             }
-            return;
+        } else {
+            if (!Array.isArray(message)) {
+                message = [
+                    message
+                ];
+            }
+            this.fireconsole.parseReceivedPostMessage(message);
         }
-        if (!Array.isArray(message)) {
-            message = [
-                message
-            ];
-        }
-        this.fireconsole.parseReceivedPostMessage(message);
     }
 };
 
