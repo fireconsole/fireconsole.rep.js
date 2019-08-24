@@ -22,6 +22,13 @@ depend {
                         "externalizeCss": true,
                         "dist": "$__DIRNAME__/dist/fireconsole.html",
                         "prime": true,
+                        "include": {
+                            "jquery": false,
+                            "regenerator-runtime": false,
+                            "riot.csp.js": true,
+                            "riot.js": true,
+                            "riot.min.js": true
+                        },
                         "page": {
                             "@fireconsole": {
                                 "messages": [

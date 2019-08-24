@@ -18,6 +18,10 @@ describe("Suite", function() {
         "routes": {
             "^/": {
                 "@github.com~jsonrep~jsonrep#s1": {
+                    "include": {
+                        "jquery": false,
+                        "regenerator-runtime": false
+                    },
                     "page": {
                         "@fireconsole": {
                             "messages": [

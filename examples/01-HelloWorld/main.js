@@ -22,6 +22,10 @@ describe("Suite", function() {
                 "@github.com~jsonrep~jsonrep#s1": {
                     "dist": PATH.join(__dirname, ".dist", "index.html"),
                     "prime": true,
+                    "include": {
+                        "jquery": false,
+                        "regenerator-runtime": false
+                    },
                     "page": {
                         "@fireconsole": {
                             "messages": [
