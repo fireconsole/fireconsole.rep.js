@@ -1,8 +1,8 @@
 #!/usr/bin/env bash.origin.script
 
 depend {
-    "php": "@com.github/bash-origin/bash.origin.php#s1",
-    "process": "@com.github/bash-origin/bash.origin.process#s1"
+    "php": "bash.origin.php # runner/v0",
+    "process": "bash.origin.process # runner/v0"
 }
 
 echo "TEST_MATCH_IGNORE>>>"

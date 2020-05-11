@@ -24,7 +24,7 @@ class Decoder {
             if (VERBOSE) console.log("Decoder.formatMessage():", message);
 
             let dataNode = null;
-            let meta = JSON.parse(message.meta);
+            let meta = (typeof message.meta === "string") ? JSON.parse(message.meta) : message.meta;
             let data = JSON.parse(message.data);
 
             if (VERBOSE) console.log("Decoder.formatMessage() meta:", JSON.stringify(meta, null, 4));
@@ -194,6 +194,7 @@ class Decoder {
                 'group.end',
                 'group.title',
                 'group.expand',
+                'console'
             ].forEach(function (name) {
                 if (typeof meta[name] !== 'undefined') node.meta[name] = meta[name];
             });

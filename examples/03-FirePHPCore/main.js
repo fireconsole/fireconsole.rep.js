@@ -11,38 +11,52 @@ module.config = {
 console.log(">>>TEST_IGNORE_LINE:GET /dist/insight.domplate.reps/<<<");
 console.log(">>>TEST_IGNORE_LINE:GET /dist/<<<");
 console.log(">>>TEST_IGNORE_LINE:Routing request /<<<");
+console.log(">>>TEST_IGNORE_LINE:Writing to:<<<");
+console.log(">>>TEST_IGNORE_LINE:Run tool step for:<<<");
+console.log(">>>TEST_IGNORE_LINE:Adding route:<<<");
+console.log(">>>TEST_IGNORE_LINE:Mounting route<<<");
+console.log(">>>TEST_IGNORE_LINE:MaxListenersExceededWarning:<<<");
 
-console.log("process.env.PORT:"< process.env.PORT);
-console.log("process.env.PHP_PORT:"< process.env.PHP_PORT);
+console.log("process.env.PORT:", process.env.PORT);
+console.log("process.env.PHP_PORT:", process.env.PHP_PORT);
+
+const LIB = require('bash.origin.lib').js;
 
 describe("Suite", function() {
 
-    require('bash.origin.lib').forPackage(__dirname).js.BASH_ORIGIN_EXPRESS.runForTestHooks(before, after, {
+    this.timeout(60 * 1000);
+
+    const server = LIB.BASH_ORIGIN_EXPRESS.runForTestHooks(before, after, {
+        "mountPrefix": "/.tmp",
         "routes": {
             "^/": {
-                "@github.com~jsonrep~jsonrep#s1": {
-                    "include": {
-                        "jquery": false,
-                        "regenerator-runtime": false
-                    },
-                    "page": {
-                        "@fireconsole": {
-                            "load": [
-                                "//localhost:" + process.env.PHP_PORT + "/"
-                            ]
+                "gi0.PINF.it/build/v0 # /reps # /": {
+                    "@jsonrep # router/v1": {
+                        "include": {
+                            "jquery": false,
+                            "regenerator-runtime": false
+                        },
+                        "page": {
+                            "@fireconsole": {
+                                "load": [
+                                    "//localhost:" + process.env.PHP_PORT + "/"
+                                ]
+                            }
+                        },
+                        "reps": {
+                            "fireconsole": __dirname + "/../../src/fireconsole.rep.js"
                         }
-                    },
-                    "reps": {
-                        "fireconsole": __dirname + "/../../src/fireconsole.rep.js"
                     }
                 }
             }
         }
     });
 
-    it('Test', function (client) {
+    it('Test', async function (client) {
 
-        client.url('http://localhost:' + process.env.PORT + '/').pause(500);
+        const PORT = (await server).config.port;
+
+        client.url('http://localhost:' + process.env.PORT + '/page.html').pause(500);
 
 if (process.env.BO_TEST_FLAG_DEV) client.pause(60 * 60 * 24 * 1000);
 

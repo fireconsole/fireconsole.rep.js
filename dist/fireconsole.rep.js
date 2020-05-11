@@ -1697,7 +1697,7 @@ exports.PINF = (function (global) {
 **/
 
 (function (exports) {
- 
+
 // The global `require` for the 'external' (to the loader) environment.
 var Loader = function (global) {
 
@@ -1744,7 +1744,7 @@ var Loader = function (global) {
 	}
 
 	// @credit https://github.com/unscriptable/curl/blob/62caf808a8fd358ec782693399670be6806f1845/src/curl.js#L319-360
-	function loadInBrowser (uri, loadedCallback) {
+	function loadInBrowser (uri, loadedCallback, sandboxOptions) {
 		try {
 			// See if we are in a web worker.
 			if (typeof importScripts !== "undefined") {
@@ -1772,7 +1772,9 @@ var Loader = function (global) {
 				if (ev.type === "load" || readyStates[this.readyState]) {
 					this.onload = this.onreadystatechange = this.onerror = null;
 					loadedCallback(null, function () {
-						element.parentNode.removeChild(element);
+						if (!sandboxOptions || sandboxOptions.keepScriptTags !== true) {
+							element.parentNode.removeChild(element);
+						}
 					});
 				}
 			}
@@ -1885,7 +1887,8 @@ var Loader = function (global) {
 										cleanupCallback();
 									}
 								});
-							}
+							},
+							sandboxOptions
 						);
 					}
 				}
@@ -1937,7 +1940,8 @@ var Loader = function (global) {
 									function () {
 										pending -= 1;
 										finalize();
-									}
+									},
+									sandboxOptions
 								);
 							}
 						}
@@ -2426,7 +2430,7 @@ var Loader = function (global) {
 					loadedCallback(null);
 					return;
 				}
-				return fallbackLoad(uri, loadedCallback);
+				return fallbackLoad(uri, loadedCallback, options);
 			}
 			programIdentifier = bundle.uri || "#pinf:" + Math.random().toString(36).substr(2, 9);
 		}
@@ -3251,7 +3255,7 @@ if (exports) exports.Loader = Loader;
 }();
 
 }).call(this,require('_process'))
-},{"_process":130}],3:[function(require,module,exports){
+},{"_process":132}],3:[function(require,module,exports){
 var hashClear = require('./_hashClear'),
     hashDelete = require('./_hashDelete'),
     hashGet = require('./_hashGet'),
@@ -5879,7 +5883,7 @@ var REPS = require("insight.domplate.reps");
 var repsBaseUrl = "/reps";
 
 if (typeof bundle !== "undefined") {
-  repsBaseUrl = bundle.module.filename.replace(/(^|\/)[^\/]+\/[^\/]+$/, '$1dist/insight.domplate.reps');
+  repsBaseUrl = bundle.module.filename.replace(/(^|\/)[^\/]+\/[^\/]+$/, '$1dist/reps/insight.domplate.reps/dist/reps');
 }
 
 var repLoader = new REPS.Loader({
@@ -5892,8 +5896,11 @@ var BROWSER_API_ENCODER = require("./encoders/BrowserApi-0.1");
 
 var FIREBUG_CONSOLE_DECODER = require("./decoders/FirebugConsole-0.1");
 
+var INSIGHT_DECODER = require("./decoders/Insight-0.1");
+
 var encoder = new BROWSER_API_ENCODER.Encoder();
 var decoder = new FIREBUG_CONSOLE_DECODER.Decoder();
+var insightDecoder = new INSIGHT_DECODER.Decoder();
 var receiver = WILDFIRE.Receiver();
 receiver.setId("http://meta.firephp.org/Wildfire/Structure/FirePHP/FirebugConsole/0.1");
 receiver.addListener({
@@ -6077,12 +6084,14 @@ function FireConsole() {
     onEvent: function onEvent(name, args) {
       console.log('repRenderer.onEvent()', name, args);
 
-      if (name === "click") {} else if (name === "expand") {} else if (name === "contract") {} else if (name === "inspectMessage") {
+      if (name === "click") {
+        self.emit("click", args[1]);
+      } else if (name === "expand") {} else if (name === "contract") {} else if (name === "inspectMessage") {
         self.emit(name, {
           node: args[1].args.node
         });
       } else if (name === "inspectFile") {
-        console.log("INSPECT FILE", args);
+        self.emit(name, args[1].args);
       } else if (name === "inspectNode") {
         args[1].args.node['#'] = "InsightTree";
         self.emit(name, {
@@ -6280,6 +6289,8 @@ var PublicAPI = function () {
           this.fireconsole.appendMessage(decoder.formatMessage(message));
         } else if (message.receiver === "http://meta.firephp.org/Wildfire/Structure/FirePHP/Dump/0.1") {
           this.fireconsole.appendMessage(decoder.formatMessage(message));
+        } else if (message.receiver === "http://registry.pinf.org/cadorn.org/insight/@meta/receiver/console/firephp/0" || message.receiver === "http://registry.pinf.org/cadorn.org/insight/@meta/receiver/console/page/0") {
+          this.fireconsole.appendMessage(insightDecoder.formatMessage(message));
         } else if (message.receiver === "https://gi0.FireConsole.org/rep.js/InsightTree/0.1") {
           message.data["#"] = "InsightTree";
           this.fireconsole.appendMessage(message.data);
@@ -6332,7 +6343,7 @@ exports.main = function (JSONREP, node) {
     return JSONREP.makeRep('<div></div>', {
       css: {
         ".@": "github.com~0ink~codeblock/codeblock:Codeblock",
-        "_code": "{\"_cssid\":\"71e851a61fa880aafcc2b86479d6153e22f7af9c\",\"repUri\":\"fireconsole\"}",
+        "_code": "{\"_cssid\":\"3c667f8b6935492d05f06fdfad1f7d7e0007e18d\",\"repUri\":\"fireconsole\"}",
         "_format": "json",
         "_args": [],
         "_compiled": false
@@ -6345,7 +6356,7 @@ exports.main = function (JSONREP, node) {
     });
   });
 };
-},{"./decoders/FirebugConsole-0.1":100,"./encoders/BrowserApi-0.1":101,"eventemitter2":2,"insight.domplate.reps":126,"lodash/merge":96,"wildfire-for-js/lib/wildfire":113}],100:[function(require,module,exports){
+},{"./decoders/FirebugConsole-0.1":100,"./decoders/Insight-0.1":101,"./encoders/BrowserApi-0.1":102,"eventemitter2":2,"insight.domplate.reps":128,"lodash/merge":96,"wildfire-for-js/lib/wildfire":114}],100:[function(require,module,exports){
 "use strict";
 
 function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
@@ -6381,7 +6392,7 @@ var Decoder = function () {
       try {
         if (VERBOSE) console.log("Decoder.formatMessage():", message);
         var dataNode = null;
-        var meta = JSON.parse(message.meta);
+        var meta = typeof message.meta === "string" ? JSON.parse(message.meta) : message.meta;
         var data = JSON.parse(message.data);
         if (VERBOSE) console.log("Decoder.formatMessage() meta:", JSON.stringify(meta, null, 4));
         if (VERBOSE) console.log("Decoder.formatMessage() data:", JSON.stringify(data, null, 4));
@@ -6489,7 +6500,7 @@ var Decoder = function () {
                 }
         }
 
-        ['priority', 'label', 'file', 'line', 'target', 'group', 'group.start', 'group.end', 'group.title', 'group.expand'].forEach(function (name) {
+        ['priority', 'label', 'file', 'line', 'target', 'group', 'group.start', 'group.end', 'group.title', 'group.expand', 'console'].forEach(function (name) {
           if (typeof meta[name] !== 'undefined') node.meta[name] = meta[name];
         });
 
@@ -6512,7 +6523,65 @@ var Decoder = function () {
 }();
 
 exports.Decoder = Decoder;
-},{"insight-for-js/lib/encoder/default":123}],101:[function(require,module,exports){
+},{"insight-for-js/lib/encoder/default":125}],101:[function(require,module,exports){
+"use strict";
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+var DECODER = require("insight-for-js/lib/decoder/default");
+
+var Decoder = function () {
+  function Decoder() {
+    _classCallCheck(this, Decoder);
+  }
+
+  _createClass(Decoder, [{
+    key: "formatMessage",
+    value: function formatMessage(message) {
+      var meta = typeof message.meta === "string" ? JSON.parse(message.meta) : message.meta;
+
+      if (meta["lang.id"] === "registry.pinf.org/cadorn.org/github/renderers\/packages\/php\/master") {
+        meta["lang"] = "php";
+        delete meta["lang.id"];
+      } else {
+        throw new Error("'lang.id of '" + meta["lang.id"] + "' not supported!");
+      }
+
+      var data = JSON.parse(message.data);
+
+      if (!data.origin) {
+        throw new Error("No 'data.origin' found in message data");
+      }
+
+      Object.keys(data.origin).forEach(function (name) {
+        meta[name] = data.origin[name];
+      });
+      var node = {
+        "#": "InsightTree",
+        meta: meta,
+        type: meta.type,
+        value: meta.value
+      };
+      delete meta.type;
+      delete meta.value;
+
+      if (data.instances) {
+        node.instances = data.instances;
+      }
+
+      return node;
+    }
+  }]);
+
+  return Decoder;
+}();
+
+exports.Decoder = Decoder;
+},{"insight-for-js/lib/decoder/default":124}],102:[function(require,module,exports){
 "use strict";
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -6574,7 +6643,7 @@ var Encoder = function () {
 }();
 
 exports.Encoder = Encoder;
-},{"insight-for-js/lib/encoder/default":123}],102:[function(require,module,exports){
+},{"insight-for-js/lib/encoder/default":125}],103:[function(require,module,exports){
 
 
 var CHANNEL = require("./channel");
@@ -6689,7 +6758,7 @@ HttpHeaderChannel.prototype.getMozillaRequestObserverListener = function(globals
     return this.mozillaRequestObserverListener;
 }
 
-},{"./channel":105}],103:[function(require,module,exports){
+},{"./channel":106}],104:[function(require,module,exports){
 
 var CHANNEL = require("./channel"),
     UTIL = require("fp-modules-for-nodejs/lib/util");
@@ -6753,7 +6822,7 @@ PostMessageChannel.prototype.parseReceivedPostMessage = function(msg)
     });
 }
 
-},{"./channel":105,"fp-modules-for-nodejs/lib/util":122}],104:[function(require,module,exports){
+},{"./channel":106,"fp-modules-for-nodejs/lib/util":123}],105:[function(require,module,exports){
 
 var CHANNEL = require("./channel");
 
@@ -6770,7 +6839,7 @@ var ShellCommandChannel = exports.ShellCommandChannel = function () {
 
 ShellCommandChannel.prototype = CHANNEL.Channel();
 
-},{"./channel":105}],105:[function(require,module,exports){
+},{"./channel":106}],106:[function(require,module,exports){
 
 var UTIL = require("fp-modules-for-nodejs/lib/util");
 var PROTOCOL = require("./protocol");
@@ -7300,7 +7369,7 @@ Channel.prototype.setTransport = function(transport) {
 }
 
 
-},{"./protocol":109,"./transport":112,"fp-modules-for-nodejs/lib/util":122}],106:[function(require,module,exports){
+},{"./protocol":110,"./transport":113,"fp-modules-for-nodejs/lib/util":123}],107:[function(require,module,exports){
 
 var CHANNEL = require("../channel"),
     UTIL = require("fp-modules-for-nodejs/lib/util"),
@@ -7397,7 +7466,7 @@ HttpClientChannel.prototype.flush = function(applicator, bypassTransport)
     return self._flush(applicator);
 }
 
-},{"../channel":105,"fp-modules-for-nodejs/lib/http-client":115,"fp-modules-for-nodejs/lib/json":116,"fp-modules-for-nodejs/lib/util":122}],107:[function(require,module,exports){
+},{"../channel":106,"fp-modules-for-nodejs/lib/http-client":116,"fp-modules-for-nodejs/lib/json":117,"fp-modules-for-nodejs/lib/util":123}],108:[function(require,module,exports){
 
 var Dispatcher = exports.Dispatcher = function () {
     if (!(this instanceof exports.Dispatcher))
@@ -7436,7 +7505,7 @@ Dispatcher.prototype._dispatch = function(message, bypassReceivers) {
     this.channel.enqueueOutgoing(message, bypassReceivers);
 }
 
-},{}],108:[function(require,module,exports){
+},{}],109:[function(require,module,exports){
 
 var Message = exports.Message = function (dispatcher) {
     if (!(this instanceof exports.Message))
@@ -7494,7 +7563,7 @@ Message.prototype.getData = function() {
     return this.data;
 }
 
-},{}],109:[function(require,module,exports){
+},{}],110:[function(require,module,exports){
 
 var MESSAGE = require("./message");
 var JSON = require("fp-modules-for-nodejs/lib/json");
@@ -8334,7 +8403,7 @@ function chunk_split(value, length) {
     return parts;
 }
 
-},{"./message":108,"fp-modules-for-nodejs/lib/json":116,"fp-modules-for-nodejs/lib/util":122}],110:[function(require,module,exports){
+},{"./message":109,"fp-modules-for-nodejs/lib/json":117,"fp-modules-for-nodejs/lib/util":123}],111:[function(require,module,exports){
 
 var Receiver = exports.Receiver = function () {
     if (!(this instanceof exports.Receiver))
@@ -8425,7 +8494,7 @@ Receiver.prototype._dispatch = function(event, args) {
     return returnOptions;
 }
 
-},{}],111:[function(require,module,exports){
+},{}],112:[function(require,module,exports){
 
 var WILDFIRE = require("../wildfire"),
     JSON = require("fp-modules-for-nodejs/lib/json");
@@ -8555,7 +8624,7 @@ CallbackStream.prototype.receive = function(handler)
     this.receiveHandler = handler;
 }
 
-},{"../wildfire":113,"fp-modules-for-nodejs/lib/json":116}],112:[function(require,module,exports){
+},{"../wildfire":114,"fp-modules-for-nodejs/lib/json":117}],113:[function(require,module,exports){
 
 
 const RECEIVER_ID = "http://registry.pinf.org/cadorn.org/wildfire/@meta/receiver/transport/0";
@@ -8671,7 +8740,7 @@ throw new Error("OOPS!!!");
 }
 
 
-},{"./message":108,"./receiver":110,"./wildfire":113,"fp-modules-for-nodejs/lib/json":116,"fp-modules-for-nodejs/lib/md5":117,"fp-modules-for-nodejs/lib/struct":120}],113:[function(require,module,exports){
+},{"./message":109,"./receiver":111,"./wildfire":114,"fp-modules-for-nodejs/lib/json":117,"fp-modules-for-nodejs/lib/md5":118,"fp-modules-for-nodejs/lib/struct":121}],114:[function(require,module,exports){
 
 exports.Receiver = function() {
     return require("./receiver").Receiver();
@@ -8705,7 +8774,7 @@ exports.CallbackStream = function() {
     return require("./stream/callback").CallbackStream();
 }
 
-},{"./channel-httpheader":102,"./channel-postmessage":103,"./channel-shellcommand":104,"./channel/http-client":106,"./dispatcher":107,"./message":108,"./receiver":110,"./stream/callback":111}],114:[function(require,module,exports){
+},{"./channel-httpheader":103,"./channel-postmessage":104,"./channel-shellcommand":105,"./channel/http-client":107,"./dispatcher":108,"./message":109,"./receiver":111,"./stream/callback":112}],115:[function(require,module,exports){
 
 /* Binary */
 // -- tlrobinson Tom Robinson
@@ -9469,7 +9538,7 @@ ByteArray.prototype.toSource = function() {
 };
 
 
-},{"./platform/node/binary":119,"./util":122}],115:[function(require,module,exports){
+},{"./platform/node/binary":120,"./util":123}],116:[function(require,module,exports){
 
 //var ENGINE = require("./platform/{platform}/http-client");
 var ENGINE = require("./platform/browser/http-client");
@@ -9518,12 +9587,12 @@ exports.request = function(options, successCallback, errorCallback)
     return ENGINE.request(options, successCallback, errorCallback);
 }
 
-},{"./platform/browser/http-client":118,"./uri":121}],116:[function(require,module,exports){
+},{"./platform/browser/http-client":119,"./uri":122}],117:[function(require,module,exports){
 
 exports.encode = JSON.stringify;
 exports.decode = JSON.parse;
 
-},{}],117:[function(require,module,exports){
+},{}],118:[function(require,module,exports){
 
 /*!
     A JavaScript implementation of the RSA Data Security, Inc. MD5 Message
@@ -9696,7 +9765,7 @@ var core_hmac_md5 = function (key, data, _characterSize) {
 };
 
 
-},{"./struct":120,"./util":122}],118:[function(require,module,exports){
+},{"./struct":121,"./util":123}],119:[function(require,module,exports){
 
 exports.request = function(options, successCallback, errorCallback)
 {
@@ -9744,7 +9813,7 @@ exports.request = function(options, successCallback, errorCallback)
     }
 }
 
-},{}],119:[function(require,module,exports){
+},{}],120:[function(require,module,exports){
 (function (Buffer){
 
 //var Buffer = require("../../buffer").Buffer;
@@ -9797,7 +9866,7 @@ exports.B_TRANSCODE = function(bytes, offset, length, sourceCharset, targetChars
 };
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":128}],120:[function(require,module,exports){
+},{"buffer":130}],121:[function(require,module,exports){
 
 // -- kriskowal Kris Kowal Copyright (C) 2009-2010 MIT License
 
@@ -10063,7 +10132,7 @@ exports.bin2hex = function (bin) {
     return str;
 }
 
-},{"./binary":114,"./util":122}],121:[function(require,module,exports){
+},{"./binary":115,"./util":123}],122:[function(require,module,exports){
 
 // -- kriskowal Kris Kowal Copyright (C) 2009-2010 MIT License
 // gmosx, George Moschovitis
@@ -10486,7 +10555,7 @@ exports.pathToUri = function (path) {
 };
 */
 
-},{}],122:[function(require,module,exports){
+},{}],123:[function(require,module,exports){
 
 // -- kriskowal Kris Kowal Copyright (C) 2009-2010 MIT License
 // -- isaacs Isaac Schlueter
@@ -11669,7 +11738,359 @@ exports.title = function (value, delimiter) {
 };
 
 
-},{}],123:[function(require,module,exports){
+},{}],124:[function(require,module,exports){
+
+var UTIL = require("fp-modules-for-nodejs/lib/util"),
+    JSON = require("fp-modules-for-nodejs/lib/json"),
+    ENCODER = require("../encoder/default");
+
+exports.EXTENDED = "EXTENDED";
+exports.SIMPLE = "SIMPLE";
+
+
+exports.generateFromMessage = function(message, format)
+{
+    format = format || exports.EXTENDED;
+
+    var og = new ObjectGraph();
+
+    var meta = {},
+        data;
+
+    if (typeof message.getMeta == "function")
+    {
+        meta = JSON.decode(message.getMeta() || "{}");
+    }
+    else
+    if (typeof message.meta == "string")
+    {
+        meta = JSON.decode(message.meta);
+    }
+    else
+    if (typeof message.meta == "object")
+    {
+        meta = message.meta;
+    }
+
+    if (typeof message.getData == "function")
+    {
+        data = message.getData();
+    }
+    else
+    if (typeof message.data != "undefined")
+    {
+        data = message.data;
+    }
+    else
+        throw new Error("NYI");
+
+    if(meta["msg.preprocessor"] && meta["msg.preprocessor"]=="FirePHPCoreCompatibility") {
+        var parts = convertFirePHPCoreData(meta, data);
+        if (typeof message.setMeta == "function")
+            message.setMeta(JSON.encode(parts[0]));
+        else
+            message.meta = JSON.encode(parts[0]);
+        data = parts[1];
+
+    } else
+    if(typeof data !== "undefined" && data != "") {
+        try {
+
+            data = JSON.decode(data);
+
+        } catch(e) {
+            console.error("Error decoding JSON data: " + data);
+            throw e;
+        }
+    } else {
+        data = {};
+    }
+
+    // assign group title to value if applicable
+    if(typeof meta["group.title"] != "undefined") {
+        data = {
+            "origin": {
+                "type": "string",
+                "string": meta["group.title"]
+            }
+        };
+    }
+
+    if(data.instances) {
+        for( var i=0 ; i<data.instances.length ; i++ ) {
+            data.instances[i] = generateNodesFromData(og, data.instances[i]);
+        }
+        og.setInstances(data.instances);
+    }
+
+    if(meta["lang.id"]) {
+        og.setLanguageId(meta["lang.id"]);
+    }
+
+    og.setMeta(meta);
+
+    if(UTIL.has(data, "origin")) {
+        if(format==exports.EXTENDED) {
+            og.setOrigin(generateNodesFromData(og, data.origin));
+        } else
+        if(format==exports.SIMPLE) {
+            og.setOrigin(generateObjectsFromData(og, data.origin));
+        } else {
+            throw new Error("unsupported format: " + format);
+        }
+    }
+
+    return og;
+}
+
+function generateObjectsFromData(objectGraph, data) {
+
+    var node;
+
+    if(data.type=="array") {
+        node = [];
+        for( var i=0 ; i<data[data.type].length ; i++ ) {
+            node.push(generateObjectsFromData(objectGraph, data[data.type][i]));
+        }
+    } else
+    if(data.type=="map") {
+        node = [];
+        for( var i=0 ; i<data[data.type].length ; i++ ) {
+            node.push([
+                generateObjectsFromData(objectGraph, data[data.type][i][0]),
+                generateObjectsFromData(objectGraph, data[data.type][i][1])
+            ]);
+        }
+    } else
+    if(data.type=="dictionary") {
+        node = {};
+        for( var name in data[data.type] ) {
+            node[name] = generateObjectsFromData(objectGraph, data[data.type][name]);
+        }
+    } else {
+        node = data[data.type];
+    }
+
+    return node;
+}
+
+
+function generateNodesFromData(objectGraph, data, parentNode) {
+    
+    parentNode = parentNode || null;
+    
+    var node = new Node(objectGraph, data, parentNode);
+    
+    if(node.value!==null && typeof node.value != "undefined") {
+        // some types need nested nodes decoded
+        if(node.type=="array") {
+            for( var i=0 ; i<node.value.length ; i++ ) {
+                node.value[i] = generateNodesFromData(objectGraph, node.value[i], node);
+            }
+        } else
+        if(node.type=="map") {
+            for( var i=0 ; i<node.value.length ; i++ ) {
+                node.value[i][0] = generateNodesFromData(objectGraph, node.value[i][0], node);
+                node.value[i][1] = generateNodesFromData(objectGraph, node.value[i][1], node);
+            }
+        } else
+        if(node.type=="dictionary") {
+            for( var name in node.value ) {
+                node.value[name] = generateNodesFromData(objectGraph, node.value[name], node);
+            }
+        }
+    } else {
+        node.value = null;
+    }
+
+    return node;
+}
+
+
+
+var Node = function(objectGraph, data, parentNode) {
+    var self = this;
+//    self.parentNode = parentNode || null;
+    self.type = data.type;
+    self.value = (typeof data.value !== "undefined" && data.value) || date[data.type];
+    self.meta = objectGraph.meta || {};
+    UTIL.every(data, function(item) {
+        if(item[0]!="type" && item[0]!=self.type) {
+            self.meta[item[0]] = item[1];
+        }
+    });
+    if(self.type=="reference") {
+        self.getInstance = function() {
+            return objectGraph.getInstance(self.value);
+        }
+    }
+//    self.getObjectGraph = function() {
+//        return objectGraph;
+//    }
+}
+
+Node.prototype.getTemplateId = function() {
+    if(UTIL.has(this.meta, "tpl.id")) {
+        return this.meta["tpl.id"];
+    }
+    return false;
+}
+
+Node.prototype.compact = function() {
+    if(!this.compacted) {
+        if(this.type=="map") {
+            this.compacted = {};
+            for( var i=0 ; i<this.value.length ; i++ ) {
+                this.compacted[this.value[i][0].value] = this.value[i][1];
+            }
+        }
+    }
+    return this.compacted;
+}
+/*
+Node.prototype.getPath = function(locateChild) {
+    var path = [];
+    if (this.parentNode)
+        path = path.concat(this.parentNode.getPath(this));
+    else
+        path = path.concat(this.getObjectGraph().getPath(this));
+    if (locateChild)
+    {
+        if(this.type=="map") {
+            for( var i=0 ; i<this.value.length ; i++ ) {
+                if (this.value[i][1] === locateChild)
+                {
+                    path.push("value[" + i + "][1]");
+                    break;
+                }
+            }
+        } else
+        if(this.type=="dictionary") {
+            for (var key in this.value)
+            {
+                if (this.value[key] === locateChild)
+                {
+                    path.push("value['" + key + "']");
+                    break;
+                }
+            }
+        } else
+        if(this.type=="array") {
+            for( var i=0 ; i<this.value.length ; i++ ) {
+                if (this.value[i] === locateChild)
+                {
+                    path.push("value[" + i + "]");
+                    break;
+                }
+            }
+        } else {
+console.error("NYI - getPath() for this.type = '" + this.type + "'", this);            
+        }
+    }
+    return path;
+}
+*/
+Node.prototype.forPath = function(path) {
+    if (!path || path.length === 0)
+        return this;
+    if(this.type=="map") {
+        var m = path[0].match(/^value\[(\d*)\]\[1\]$/);
+        return this.value[parseInt(m[1])][1].forPath(path.slice(1));
+    } else
+    if(this.type=="dictionary") {
+        var m = path[0].match(/^value\['(.*?)'\]$/);
+        return this.value[m[1]].forPath(path.slice(1));
+    } else
+    if(this.type=="array") {
+        var m = path[0].match(/^value\[(\d*)\]$/);
+        return this.value[parseInt(m[1])].forPath(path.slice(1));
+    } else {
+//console.error("NYI - forPath('" + path + "') for this.type = '" + this.type + "'", this);            
+    }
+    return null;
+}
+
+//Node.prototype.renderIntoViewer = function(viewerDocument, options) {
+//    throw new Error("NYI - Node.prototype.renderIntoViewer in " + module.id);
+//    return RENDERER.renderIntoViewer(this, viewerDocument, options);
+//}
+
+
+var ObjectGraph = function() {
+//    this.message = message;
+}
+//ObjectGraph.prototype = Object.create(new Node());
+
+ObjectGraph.prototype.setOrigin = function(node) {
+    this.origin = node;
+}
+
+ObjectGraph.prototype.getOrigin = function() {
+    return this.origin;
+}
+
+ObjectGraph.prototype.setInstances = function(instances) {
+    this.instances = instances;
+}
+
+ObjectGraph.prototype.getInstance = function(index) {
+    return this.instances[index];
+}
+
+ObjectGraph.prototype.setLanguageId = function(id) {
+    this.languageId = id;
+}
+
+ObjectGraph.prototype.getLanguageId = function() {
+    return this.languageId;
+}
+
+ObjectGraph.prototype.setMeta = function(meta) {
+    this.meta = meta;
+}
+
+ObjectGraph.prototype.getMeta = function() {
+    return this.meta;
+}
+/*
+ObjectGraph.prototype.getPath = function(locateChild) {
+    if (this.origin === locateChild)
+    {
+        return ["origin"];
+    }
+    for( var i=0 ; i<this.instances.length ; i++ ) {
+        if (this.instances[i] === locateChild)
+        {
+            return ["instances[" + i + "]"];
+        }
+    }
+    throw new Error("Child node not found. We should never reach this!");
+}
+*/
+ObjectGraph.prototype.nodeForPath = function(path) {
+    var m = path[0].match(/^instances\[(\d*)\]$/);
+    if (m) {
+        return this.instances[parseInt(m[1])].forPath(path.slice(1));
+    } else {
+        // assume path[0] == 'origin'
+        return this.origin.forPath(path.slice(1));
+    }
+    return node;
+}
+
+
+var encoder = ENCODER.Encoder();
+encoder.setOption("maxObjectDepth", 1000);
+encoder.setOption("maxArrayDepth", 1000);
+encoder.setOption("maxOverallDepth", 1000);
+function convertFirePHPCoreData(meta, data) {
+    data = encoder.encode(JSON.decode(data), null, {
+        "jsonEncode": false
+    });
+    return [meta, data]; 
+}
+
+},{"../encoder/default":125,"fp-modules-for-nodejs/lib/json":126,"fp-modules-for-nodejs/lib/util":127}],125:[function(require,module,exports){
 
 var UTIL = require("fp-modules-for-nodejs/lib/util");
 var JSON = require("fp-modules-for-nodejs/lib/json");
@@ -12080,11 +12501,11 @@ Encoder.prototype.encodeObject = function(meta, object, objectDepth, arrayDepth,
 
     return ret;
 }
-},{"fp-modules-for-nodejs/lib/json":124,"fp-modules-for-nodejs/lib/util":125}],124:[function(require,module,exports){
-arguments[4][116][0].apply(exports,arguments)
-},{"dup":116}],125:[function(require,module,exports){
-arguments[4][122][0].apply(exports,arguments)
-},{"dup":122}],126:[function(require,module,exports){
+},{"fp-modules-for-nodejs/lib/json":126,"fp-modules-for-nodejs/lib/util":127}],126:[function(require,module,exports){
+arguments[4][117][0].apply(exports,arguments)
+},{"dup":117}],127:[function(require,module,exports){
+arguments[4][123][0].apply(exports,arguments)
+},{"dup":123}],128:[function(require,module,exports){
 
 const WINDOW = window;
 
@@ -12125,7 +12546,7 @@ function Renderer (options) {
                     !rootNode.instances[node.value]
                 ) {
                     console.error("node", node);
-                    throw new Error("Object instance for reference '" + node.value + "' not found 'instances'!");
+                    throw new Error("Object instance for reference '" + node.value + "' not found in 'instances'!");
                 }
                 return rootNode.instances[node.value];
             }
@@ -12136,74 +12557,84 @@ function Renderer (options) {
     var context = new InsightDomplateContext();
 
     function ensureRepsForNodeLoaded (node) {
+        try {
+            // TODO: Optionally pre-fill with already loaded reps.
+            // TODO: Move node traversal into helper module.
+            var loadTypes = {
+    //            "default/unknown": true
+            };
+            function traverse (node) {
 
-        // TODO: Optionally pre-fill with already loaded reps.
-        // TODO: Move node traversal into helper module.
-        var loadTypes = {
-//            "default/unknown": true
-        };
-        function traverse (node) {
+                if (node.type) {
+                    loadTypes["default/" + node.type] = true;
+                }
 
-            if (node.type) {
-                loadTypes["default/" + node.type] = true;
-            }
-
-            if (node.meta) {
-                if (node.meta["encoder.trimmed"]) {
-                    loadTypes["default/trimmed"] = true;
-                } else
-                // DEPRECATED
-                if (node.meta.renderer === "structures/table") {
-                    loadTypes["default/table"] = true;
-                    loadTypes["default/string"] = true;
-                    node.type = "table";
-                } else
-                // DEPRECATED
-                if (node.meta.renderer === "structures/trace") {
-                    loadTypes["default/trace"] = true;
-                    loadTypes["default/string"] = true;
-                    node.type = "trace";
-                } else
-                if (
-                    node.meta["lang"] &&
-                    node.meta["lang.type"]
-                ) {
-                    // TODO: Lookup 'node.meta["lang"]/node.meta["lang.type"]' and see
-                    // what it extends to determine what sub-structures to parse.
-                    if (node.meta["lang"] === "php") {
-                        if (node.meta["lang.type"] === "array") {
-                            if (node.value[0] && Array.isArray(node.value[0])) {
+                if (node.meta) {
+                    if (node.meta["encoder.trimmed"]) {
+                        loadTypes["default/trimmed"] = true;
+                    } else
+                    // DEPRECATED
+                    if (node.meta.renderer === "structures/table") {
+                        loadTypes["default/table"] = true;
+                        loadTypes["default/string"] = true;
+                        node.type = "table";
+                    } else
+                    // DEPRECATED
+                    if (node.meta.renderer === "structures/trace") {
+                        loadTypes["default/trace"] = true;
+                        loadTypes["default/string"] = true;
+                        node.type = "trace";
+                    } else
+                    if (
+                        node.meta["lang"] &&
+                        node.meta["lang.type"]
+                    ) {
+                        // TODO: Lookup 'node.meta["lang"]/node.meta["lang.type"]' and see
+                        // what it extends to determine what sub-structures to parse.
+                        if (node.meta["lang"] === "php") {
+                            if (node.meta["lang.type"] === "array") {
+                                if (node.value[0] && Array.isArray(node.value[0])) {
+                                    loadTypes["php/array-associative"] = true;
+                                    node.value.forEach(function (pair) {
+                                        traverse(pair[0]);
+                                        traverse(pair[1]);
+                                    });
+                                } else {
+                                    loadTypes["php/array-indexed"] = true;
+                                    node.value.forEach(function (node) {
+                                        traverse(node);
+                                    });
+                                }
+                            } else
+                            if (node.meta["lang.type"] === "map") {
                                 loadTypes["php/array-associative"] = true;
                                 node.value.forEach(function (pair) {
                                     traverse(pair[0]);
                                     traverse(pair[1]);
                                 });
-                            } else {
-                                loadTypes["php/array-indexed"] = true;
-                                node.value.forEach(function (node) {
-                                    traverse(node);
-                                });
-                            }
-                        } else
-                        if (node.meta["lang.type"] === "map") {
-                            loadTypes["php/array-associative"] = true;
-                            node.value.forEach(function (pair) {
-                                traverse(pair[0]);
-                                traverse(pair[1]);
-                            });
-                        } else
-                        if (node.meta["lang.type"] === "exception") {
-                            loadTypes["php/exception"] = true;
-                            loadTypes["default/string"] = true;
-                            if (node.value.title) {
-                                traverse(node.value.title);
-                            }
-                            if (node.value.stack) {
-                                node.value.stack.forEach(function (frame) {
-                                    frame.args.forEach(function (arg) {
-                                        traverse(arg);
+                            } else
+                            if (node.meta["lang.type"] === "exception") {
+                                loadTypes["php/exception"] = true;
+                                loadTypes["default/string"] = true;
+                                if (node.value.title) {
+                                    traverse(node.value.title);
+                                }
+                                if (node.value.stack) {
+                                    node.value.stack.forEach(function (frame) {
+                                        frame.args.forEach(function (arg) {
+                                            traverse(arg);
+                                        });
                                     });
-                                });
+                                }
+                            } else {
+                                loadTypes[node.meta["lang"] + "/" + node.meta["lang.type"]] = true;
+
+                                if (node.meta["lang.type"] === "table") {
+                                    loadTypes["default/string"] = true;
+                                } else
+                                if (node.meta["lang.type"] === "trace") {
+                                    loadTypes["default/string"] = true;
+                                }    
                             }
                         } else {
                             loadTypes[node.meta["lang"] + "/" + node.meta["lang.type"]] = true;
@@ -12213,116 +12644,119 @@ function Renderer (options) {
                             } else
                             if (node.meta["lang.type"] === "trace") {
                                 loadTypes["default/string"] = true;
-                            }    
+                            } else
+                            if (node.meta["lang.type"] === "pathtree") {
+                                loadTypes["default/string"] = true;
+                            } else
+                            if (node.meta["lang.type"] === "optiontree") {
+                                loadTypes["default/string"] = true;
+                            }
                         }
-                    } else {
-                        loadTypes[node.meta["lang"] + "/" + node.meta["lang.type"]] = true;
+    /*                    
+                    } else
+                    if (node.meta["lang.id"] === "registry.pinf.org/cadorn.org/github/renderers/packages/php/master") {
+                        if (node.meta["renderer"] === "http://registry.pinf.org/cadorn.org/renderers/packages/insight/0:structures/table") {
+                            loadTypes["default/table"] = true;
+                            loadTypes["default/string"] = true;
+                            node.type = "table";
+                        }
+    */
+                    }
+                    if (node.meta.wrapper) {
+                        loadTypes[node.meta.wrapper] = true;
 
-                        if (node.meta["lang.type"] === "table") {
-                            loadTypes["default/string"] = true;
-                        } else
-                        if (node.meta["lang.type"] === "trace") {
-                            loadTypes["default/string"] = true;
+                        if (node.meta.wrapper === "wrappers/request") {
+                            if (node.value.title) {
+                                traverse(node.value.title);
+                            }
                         }
                     }
-/*                    
-                } else
-                if (node.meta["lang.id"] === "registry.pinf.org/cadorn.org/github/renderers/packages/php/master") {
-                    if (node.meta["renderer"] === "http://registry.pinf.org/cadorn.org/renderers/packages/insight/0:structures/table") {
-                        loadTypes["default/table"] = true;
-                        loadTypes["default/string"] = true;
-                        node.type = "table";
-                    }
-*/
                 }
-                if (node.meta.wrapper) {
-                    loadTypes[node.meta.wrapper] = true;
 
-                    if (node.meta.wrapper === "wrappers/request") {
+                if (
+                    node.value !== null &&
+                    typeof node.value !== 'undefined'
+                ) {
+
+                    let type = node.type || node.meta["lang.type"];
+
+                    if (type === "array") {
+                        node.value.forEach(function (node) {
+                            traverse(node);
+                        });
+                    } else
+                    if (type === "dictionary") {
+                        Object.keys(node.value).forEach(function (key) {
+                            traverse(node.value[key]);
+                        });
+                    } else
+                    if (type === "map") {
+                        node.value.forEach(function (pair) {
+                            traverse(pair[0]);
+                            traverse(pair[1]);
+                        });
+                    } else
+                    if (type === "reference") {
+                        if (node.value.instance) {
+                            traverse(node.value.instance);
+                        } else
+                        if (
+                            node.instances &&
+                            typeof node.value === "number"
+                        ) {
+                            traverse(node.instances[node.value]);
+                        } else
+                        if (typeof node.getInstance === 'function') {
+                            traverse(node.getInstance());
+                        }
+                    } else
+                    if (type === "table") {
                         if (node.value.title) {
                             traverse(node.value.title);
                         }
+                        if (node.value.header) {
+                            node.value.header.forEach(function (node) {
+                                traverse(node);
+                            });
+                        }
+                        if (node.value.body) {
+                            node.value.body.forEach(function (row) {
+                                row.forEach(function (cell) {
+                                    traverse(cell);
+                                });
+                            });
+                        }
+                    } else
+                    if (type === "trace") {
+                        if (node.value.title) {
+                            traverse(node.value.title);
+                        }
+                        if (node.value.stack) {
+                            node.value.stack.forEach(function (frame) {
+                                frame.args.forEach(function (arg) {
+                                    traverse(arg);
+                                });
+                            });
+                        }
                     }
                 }
             }
+            traverse(node);
 
-            if (typeof node.value !== 'undefined') {
+            return Promise.all(Object.keys(loadTypes).map(function (type) {
 
-                let type = node.type || node.meta["lang.type"];
+                type = type.split("/");
 
-                if (type === "array") {
-                    node.value.forEach(function (node) {
-                        traverse(node);
-                    });
-                } else
-                if (type === "dictionary") {
-                    Object.keys(node.value).forEach(function (key) {
-                        traverse(node.value[key]);
-                    });
-                } else
-                if (type === "map") {
-                    node.value.forEach(function (pair) {
-                        traverse(pair[0]);
-                        traverse(pair[1]);
-                    });
-                } else
-                if (type === "reference") {
-                    if (node.value.instance) {
-                        traverse(node.value.instance);
-                    } else
-                    if (
-                        node.instances &&
-                        typeof node.value === "number"
-                    ) {
-                        traverse(node.instances[node.value]);
-                    } else
-                    if (typeof node.getInstance === 'function') {
-                        traverse(node.getInstance());
-                    }
-                } else
-                if (type === "table") {
-                    if (node.value.title) {
-                        traverse(node.value.title);
-                    }
-                    if (node.value.header) {
-                        node.value.header.forEach(function (node) {
-                            traverse(node);
-                        });
-                    }
-                    if (node.value.body) {
-                        node.value.body.forEach(function (row) {
-                            row.forEach(function (cell) {
-                                traverse(cell);
-                            });
-                        });
-                    }
-                } else
-                if (type === "trace") {
-                    if (node.value.title) {
-                        traverse(node.value.title);
-                    }
-                    if (node.value.stack) {
-                        node.value.stack.forEach(function (frame) {
-                            frame.args.forEach(function (arg) {
-                                traverse(arg);
-                            });
-                        });
-                    }
-                }
-            }
+                var repUri = loader.repUriForType(type[0], type[1]);
+
+                return loader.ensureRepForUri(repUri).then(function () {
+                    return null;
+                });
+            }));
+        } catch (err) {
+            console.error('Error checking node:', node);
+            throw err;
         }
-        traverse(node);
-
-        return Promise.all(Object.keys(loadTypes).map(function (type) {
-
-            type = type.split("/");
-
-            var repUri = loader.repUriForType(type[0], type[1]);
-
-            return loader.ensureRepForUri(repUri).then(function () {
-                return null;
-            });
-        }));
     }
 
     self.renderNodeInto = function (node, selectorOrElement, options) {
@@ -12502,7 +12936,7 @@ function Loader (options) {
 
 exports.Loader = Loader;
 
-},{"domplate/dist/domplate.js":1}],127:[function(require,module,exports){
+},{"domplate/dist/domplate.js":1}],129:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -12655,7 +13089,7 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],128:[function(require,module,exports){
+},{}],130:[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
@@ -14434,7 +14868,7 @@ function numberIsNaN (obj) {
   return obj !== obj // eslint-disable-line no-self-compare
 }
 
-},{"base64-js":127,"ieee754":129}],129:[function(require,module,exports){
+},{"base64-js":129,"ieee754":131}],131:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = (nBytes * 8) - mLen - 1
@@ -14520,7 +14954,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],130:[function(require,module,exports){
+},{}],132:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 

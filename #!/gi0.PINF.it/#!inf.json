@@ -1,0 +1,17 @@
+{
+    "#": "gi0.PINF.it/core/v0",
+
+    "#": {
+        "/dist": "jsonrep"
+    },
+
+    ":build:": "/dist @ builder/v1",
+
+    "builder/v1 #": "${__DIRNAME__}/tool.",
+
+    "builder/v1 # onBuild()": (inf (config) >>>
+        {
+            "gi0.PINF.it/build/v0 @ # :build: build() /dist": %%%config%%%
+        }
+    <<<)
+}

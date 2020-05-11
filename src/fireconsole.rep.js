@@ -12,8 +12,9 @@ const EVENT_EMITTER = require("eventemitter2").EventEmitter2;
 const REPS = require("insight.domplate.reps");
 
 let repsBaseUrl = "/reps";
+
 if (typeof bundle !== "undefined") {
-    repsBaseUrl = bundle.module.filename.replace(/(^|\/)[^\/]+\/[^\/]+$/, '$1dist/insight.domplate.reps');
+    repsBaseUrl = bundle.module.filename.replace(/(^|\/)[^\/]+\/[^\/]+$/, '$1dist/reps/insight.domplate.reps/dist/reps');
 }
 
 const repLoader = new REPS.Loader({
@@ -28,9 +29,11 @@ const repLoader = new REPS.Loader({
 const WILDFIRE = require("wildfire-for-js/lib/wildfire");
 const BROWSER_API_ENCODER = require("./encoders/BrowserApi-0.1");
 const FIREBUG_CONSOLE_DECODER = require("./decoders/FirebugConsole-0.1");
+const INSIGHT_DECODER = require("./decoders/Insight-0.1");
 
 const encoder = new BROWSER_API_ENCODER.Encoder();
 const decoder = new FIREBUG_CONSOLE_DECODER.Decoder();
+const insightDecoder = new INSIGHT_DECODER.Decoder();
 
 const receiver = WILDFIRE.Receiver();
 receiver.setId("http://meta.firephp.org/Wildfire/Structure/FirePHP/FirebugConsole/0.1");
@@ -279,7 +282,7 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
 console.log('repRenderer.onEvent()', name, args);
 
             if (name === "click") {
-                //self.emit("clickRow", context);
+                self.emit("click", args[1]);
             } else
             if (name === "expand") {
                 //self.emit("expandRow", context);
@@ -294,8 +297,9 @@ console.log('repRenderer.onEvent()', name, args);
             } else
             if (name === "inspectFile") {
 
-console.log("INSPECT FILE", args);
+//console.log("INSPECT FILE", args);
 
+                self.emit(name, args[1].args);
 /*
                 var context = UTIL.copy(args[1].args);
                 context.message = args[1].message;
@@ -506,6 +510,14 @@ class PublicAPI {
             if (message.receiver === "http://meta.firephp.org/Wildfire/Structure/FirePHP/Dump/0.1") {
                 this.fireconsole.appendMessage(
                     decoder.formatMessage(message)
+                );
+            } else
+            if (
+                message.receiver === "http://registry.pinf.org/cadorn.org/insight/@meta/receiver/console/firephp/0" ||
+                message.receiver === "http://registry.pinf.org/cadorn.org/insight/@meta/receiver/console/page/0"
+            ) {
+                this.fireconsole.appendMessage(
+                    insightDecoder.formatMessage(message)
                 );
             } else
             if (message.receiver === "https://gi0.FireConsole.org/rep.js/InsightTree/0.1") {
