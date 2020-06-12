@@ -6343,7 +6343,7 @@ exports.main = function (JSONREP, node) {
     return JSONREP.makeRep('<div></div>', {
       css: {
         ".@": "github.com~0ink~codeblock/codeblock:Codeblock",
-        "_code": "{\"_cssid\":\"3c667f8b6935492d05f06fdfad1f7d7e0007e18d\",\"repUri\":\"fireconsole\"}",
+        "_code": "{\"_cssid\":\"e89c1c9331aa7abb16042f9573f69f4fd9ca5d7c\",\"repUri\":\"fireconsole\"}",
         "_format": "json",
         "_args": [],
         "_compiled": false

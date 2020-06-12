@@ -60,9 +60,6 @@ receiverChannel.addReceiver(receiver);
 receiverChannel.addReceiver(receiverDump);
 
 
-
-
-
 function FireConsole () {
     var self = this;
 
