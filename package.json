@@ -16,9 +16,9 @@
     "it.pinf.dev.pptr": "^0.1.0-pre.0"
   },
   "scripts": {
-    "test": "bash.origin.test examples",
-    "dev": "pinf.it ./#!inf.json --watch",
-    "build": "pinf.it ./#!inf.json",
+    "test": "./.prepare.sh; bash.origin.test examples",
+    "dev": "./.prepare.sh; pinf.it ./#!inf.json --watch",
+    "build": "./.prepare.sh; pinf.it ./#!inf.json",
     "build-old": "./workspace.sh build",
     "publish-website": "./workspace.sh publish"
   }
