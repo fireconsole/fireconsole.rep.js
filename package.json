@@ -1,18 +1,18 @@
 {
   "name": "fireconsole.rep.js",
-  "version": "0.2.0-pre.5",
+  "version": "0.2.0-pre.6",
   "pm": {
     "publish": "npm"
   },
   "dependencies": {
-    "domplate": "^0.5.0-pre.1",
-    "insight-for-js": "^0.2.1-pre.2",
+    "domplate": "^0.5.0-pre.2",
+    "insight-for-js": "^0.2.1-pre.3",
     "lodash": "^4.17.4",
-    "wildfire-for-js": "^0.2.0-pre.0",
+    "wildfire-for-js": "^0.2.0-pre.1",
     "eventemitter2": "^4.1.2",
-    "insight.domplate.reps": "^0.2.0-pre.2",
+    "insight.domplate.reps": "^0.2.0-pre.3",
     "bash.origin.lib": "^0.5.0-pre.1",
-    "jsonrep": "^0.2.0-pre.2",
+    "jsonrep": "^0.2.0-pre.3",
     "it.pinf.dev.pptr": "^0.1.0-pre.0"
   },
   "scripts": {
