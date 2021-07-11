@@ -1,0 +1,53 @@
+#!/usr/bin/env inf
+{
+    "#": [
+        "gi0.PINF.it/core/v0"
+    ],
+
+    "#": {
+        "server": "bash.origin.express",
+        "runner": "it.pinf.dev.pptr",
+        "/": "fireconsole.rep.js"
+    },
+
+    ":server:": "server @ server/v0",
+    ":runner:": "runner @ runner/v1",
+    ":builder:": "/ @ builder/v1",
+
+    "gi0.PINF.it/build/v0 @ # /": (inf () >>>
+        {
+            "gi0.PINF.it/build/v0 @ # :builder: write() /dist": {
+                "page": {
+                    "@fireconsole": {
+                        "messages": [
+                            "Hello World!"
+                        ]
+                    }
+                }
+            }
+        }
+    <<<),
+
+    "gi0.PINF.it/build/v0 @ # onOption() watch": (inf () >>>
+        {
+            "gi0.PINF.it/core/v0 @ # :server: set() config": {
+                "port": 8080,
+                "routes": {
+                    "^/": "."
+                }
+            },
+            "gi0.PINF.it/core/v0 @ # :server: run() start": "",
+            "gi0.PINF.it/build/v0 @ # :runner: start() /dist/page.html": {
+                "port": 8080
+            },
+
+            "gi0.PINF.it/build/v0 @ # waitForAnyKey()": "",
+
+
+            "gi0.PINF.it/build/v0 @ # :runner: stop() /dist/page.html": "",
+            "gi0.PINF.it/core/v0 @ # :server: run() stop": "",
+
+            "gi0.PINF.it/core/v0 @ # unwatch()": ""
+        }
+    <<<)
+}

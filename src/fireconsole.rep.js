@@ -12,8 +12,9 @@ const EVENT_EMITTER = require("eventemitter2").EventEmitter2;
 const REPS = require("insight.domplate.reps");
 
 let repsBaseUrl = "/reps";
+
 if (typeof bundle !== "undefined") {
-    repsBaseUrl = bundle.module.filename.replace(/(^|\/)[^\/]+\/[^\/]+$/, '$1dist/insight.domplate.reps');
+    repsBaseUrl = bundle.module.filename.replace(/(^|\/)[^\/]+\/[^\/]+$/, '$1dist/reps/insight.domplate.reps/dist/reps');
 }
 
 const repLoader = new REPS.Loader({
@@ -28,9 +29,11 @@ const repLoader = new REPS.Loader({
 const WILDFIRE = require("wildfire-for-js/lib/wildfire");
 const BROWSER_API_ENCODER = require("./encoders/BrowserApi-0.1");
 const FIREBUG_CONSOLE_DECODER = require("./decoders/FirebugConsole-0.1");
+const INSIGHT_DECODER = require("./decoders/Insight-0.1");
 
 const encoder = new BROWSER_API_ENCODER.Encoder();
 const decoder = new FIREBUG_CONSOLE_DECODER.Decoder();
+const insightDecoder = new INSIGHT_DECODER.Decoder();
 
 const receiver = WILDFIRE.Receiver();
 receiver.setId("http://meta.firephp.org/Wildfire/Structure/FirePHP/FirebugConsole/0.1");
@@ -42,11 +45,19 @@ receiver.addListener({
     }
 });
 
+const receiverDump = WILDFIRE.Receiver();
+receiverDump.setId("http://meta.firephp.org/Wildfire/Structure/FirePHP/Dump/0.1");
+receiverDump.addListener({
+    onMessageReceived: function (request, message) {
+        exports.fireconsole.appendMessage(
+            decoder.formatMessage(message)
+        );
+    }
+});
+
 var receiverChannel = WILDFIRE.PostMessageChannel();
 receiverChannel.addReceiver(receiver);
-
-
-
+receiverChannel.addReceiver(receiverDump);
 
 
 function FireConsole () {
@@ -125,7 +136,6 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
         new Promise(function (resolve, reject) {
 
             if (domNode) {
-    //;debugger;            
     //            message.template = helpers.getTemplateForNode(message.og.origin);
     
     //            CONSOLE_WRAPPER.renderMessage(message, domNode, options, helpers);
@@ -262,14 +272,14 @@ console.error("Supervisor.prototype.ensureCssForDocument", document);
 	var renderSupervisor = new Supervisor();
 
 
-    var repRenderer = new REPS.Renderer({
+    var repRenderer = self.repRenderer = new REPS.Renderer({
         loader: repLoader,
         onEvent: function (name, args) {
     
 console.log('repRenderer.onEvent()', name, args);
 
             if (name === "click") {
-                //self.emit("clickRow", context);
+                self.emit("click", args[1]);
             } else
             if (name === "expand") {
                 //self.emit("expandRow", context);
@@ -279,10 +289,14 @@ console.log('repRenderer.onEvent()', name, args);
             } else
             if (name === "inspectMessage") {
                 self.emit(name, {
-                    message: args[1].message
+                    node: args[1].args.node
                 });
             } else
             if (name === "inspectFile") {
+
+//console.log("INSPECT FILE", args);
+
+                self.emit(name, args[1].args);
 /*
                 var context = UTIL.copy(args[1].args);
                 context.message = args[1].message;
@@ -290,11 +304,9 @@ console.log('repRenderer.onEvent()', name, args);
 */
             } else
             if (name === "inspectNode") {
+                args[1].args.node['#'] = "InsightTree";
                 self.emit(name, {
-                    message: {
-                        node: args[1].args.node,
-                        template: helpers.getTemplateForNode(args[1].args.node)
-                    }
+                    node: args[1].args.node
                 });
             } else {
                 console.error("No handler for: repRenderer.onEvent()", name, args);
@@ -364,7 +376,6 @@ throw new Error("Get REFERENCE");
                             messageObject.postRender.keeptitle = true;
                         }
                     }
-                    //;debugger;
 //getTemplateForNode
 
 //console.log("RENDER:::", node, el);
@@ -437,6 +448,8 @@ class PublicAPI {
     constructor (fireconsole, options) {
         this.fireconsole = fireconsole;
         this.options = options || {};
+
+        this.FireConsole = FireConsole;
     }
 
     clear () {
@@ -490,17 +503,34 @@ class PublicAPI {
                 this.fireconsole.appendMessage(
                     decoder.formatMessage(message)
                 );
+            } else
+            if (message.receiver === "http://meta.firephp.org/Wildfire/Structure/FirePHP/Dump/0.1") {
+                this.fireconsole.appendMessage(
+                    decoder.formatMessage(message)
+                );
+            } else
+            if (
+                message.receiver === "http://registry.pinf.org/cadorn.org/insight/@meta/receiver/console/firephp/0" ||
+                message.receiver === "http://registry.pinf.org/cadorn.org/insight/@meta/receiver/console/page/0"
+            ) {
+                this.fireconsole.appendMessage(
+                    insightDecoder.formatMessage(message)
+                );
+            } else
+            if (message.receiver === "https://gi0.FireConsole.org/rep.js/InsightTree/0.1") {
+                message.data["#"] = "InsightTree";
+                this.fireconsole.appendMessage(message.data);
             } else {
                 throw new Error(`Receiver for ID '${message.receiver}' not implemented!`);
             }
-            return;
+        } else {
+            if (!Array.isArray(message)) {
+                message = [
+                    message
+                ];
+            }
+            this.fireconsole.parseReceivedPostMessage(message);
         }
-        if (!Array.isArray(message)) {
-            message = [
-                message
-            ];
-        }
-        this.fireconsole.parseReceivedPostMessage(message);
     }
 };
 

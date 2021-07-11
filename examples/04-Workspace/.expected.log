@@ -1,0 +1,16 @@
+>>>TEST_IGNORE_LINE:assertions passed\.<<<
+>>>TEST_IGNORE_LINE:\d milliseconds.$<<<
+>>>TEST_IGNORE_LINE:\d+\spassing\s\([^\)]+\)<<<
+environments: default
+
+
+- [0;36mConnecting to localhost on port 4444...
+[0m
+
+  Suite
+Server: http://localhost:8080/
+127.0.0.1 - "GET /data/messages.js HTTP/1.1" 200 - "http://localhost:8080/dist/page.html"
+127.0.0.1 - "GET /custom/index.html HTTP/1.1" 200 - "-"
+
+
+
